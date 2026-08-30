@@ -51,9 +51,9 @@ func newWorkflowAssignmentResolver(repository *workflow.Repository, registry *ou
 	if repository == nil {
 		return nil, nil
 	}
-	connection, ok := registry.GRPC("authorization-service")
+	connection, ok := registry.GRPC("authorization")
 	if !ok {
-		return nil, errors.New("workflow service requires outbound.grpc.authorization-service")
+		return nil, errors.New("workflow service requires outbound.grpc.authorization")
 	}
 	return workflowauth.New(authorizationv1.NewAuthorizationServiceClient(connection))
 }

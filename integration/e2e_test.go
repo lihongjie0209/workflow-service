@@ -63,7 +63,7 @@ func TestHTTPJWTAndGRPCWorkflowEndToEnd(t *testing.T) {
 		Migration: config.Migration{AutoUp: true, CreateSchema: true, Path: migrationPath, DatabaseURL: dsn, Table: "workflow_e2e_schema_migrations", Schema: "workflow_e2e", DatabaseName: "app"},
 		Health:    config.Health{DatabaseTimeout: 2 * time.Second, RedisTimeout: 2 * time.Second}, Observability: config.Observability{MetricsEnabled: false},
 		JWT: config.JWT{Issuer: "integration", Secret: secret, TTL: time.Hour}, Auth: config.Auth{ClientID: "client", ClientSecret: "secret", SkipHTTPPaths: []string{"/api/v1/version"}, SkipGRPCMethods: []string{"/grpc.health.v1.Health/*"}, PSK: config.PSK{Enabled: true, Key: secret, HTTPPaths: []string{"/api/v1/workflow/definitions/get"}, GRPCMethods: []string{"/platform.workflow.v1.WorkflowService/GetDefinition"}}},
-		Outbound: config.Outbound{GRPC: map[string]config.GRPCUpstream{"authorization-service": {Target: authorizationAddress, Timeout: 5 * time.Second, Retry: config.Retry{MaxAttempts: 1, InitialBackoff: 10 * time.Millisecond, MaxBackoff: time.Second}}}},
+		Outbound: config.Outbound{GRPC: map[string]config.GRPCUpstream{"authorization": {Target: authorizationAddress, Timeout: 5 * time.Second, Retry: config.Retry{MaxAttempts: 1, InitialBackoff: 10 * time.Millisecond, MaxBackoff: time.Second}}}},
 	}
 	application := app.New(cfg)
 	if err := application.Start(ctx); err != nil {

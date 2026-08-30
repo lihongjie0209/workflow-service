@@ -48,7 +48,7 @@ temporal:
   task_queue: workflow-service
 outbound:
   grpc:
-    authorization-service:
+    authorization:
       target: dns:///authorization-service.platform.svc.cluster.local:9090
       timeout: 5s
       retry:

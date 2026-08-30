@@ -260,6 +260,9 @@ func LoadWithProfile(path, explicitProfile string) (Config, error) {
 	if err := v.BindEnv("app.env", "APP_ENV", "APP_APP_ENV"); err != nil {
 		return Config{}, fmt.Errorf("bind environment profile: %w", err)
 	}
+	if err := v.BindEnv("outbound.grpc.authorization.target", "APP_OUTBOUND_GRPC_AUTHORIZATION_TARGET"); err != nil {
+		return Config{}, fmt.Errorf("bind authorization target: %w", err)
+	}
 	setDefaults(v)
 	if err := v.ReadInConfig(); err != nil {
 		var notFound viper.ConfigFileNotFoundError

@@ -85,13 +85,14 @@ func TestLoadWithProfile_ProductionDependencies(t *testing.T) {
 	t.Setenv("APP_GRPC_TLS_CERT_FILE", "/etc/workflow-service/tls/tls.crt")
 	t.Setenv("APP_GRPC_TLS_KEY_FILE", "/etc/workflow-service/tls/tls.key")
 	t.Setenv("APP_TEMPORAL_HOST_PORT", "temporal:7233")
+	t.Setenv("APP_OUTBOUND_GRPC_AUTHORIZATION_TARGET", "dns:///authorization-service.platform-production.svc.cluster.local:9090")
 
 	cfg, err := LoadWithProfile(filepath.Join("..", "..", "config", "config.yaml"), "production")
 	if err != nil {
 		t.Fatalf("LoadWithProfile() error = %v", err)
 	}
-	upstream, ok := cfg.Outbound.GRPC["authorization-service"]
-	if !ok || upstream.Target != "dns:///authorization-service.platform.svc.cluster.local:9090" {
+	upstream, ok := cfg.Outbound.GRPC["authorization"]
+	if !ok || upstream.Target != "dns:///authorization-service.platform-production.svc.cluster.local:9090" {
 		t.Fatalf("authorization upstream = %#v, found = %v", upstream, ok)
 	}
 	if !cfg.EventBus.Enabled || !cfg.Temporal.Enabled || cfg.Auth.Audience != "workflow-service" {

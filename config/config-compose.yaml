@@ -20,7 +20,7 @@ event_bus:
   subjects: [platform.>]
 outbound:
   grpc:
-    authorization-service:
+    authorization:
       target: authorization-service:9090
       timeout: 5s
       retry:
