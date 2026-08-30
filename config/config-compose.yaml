@@ -1,0 +1,36 @@
+app:
+  env: compose
+log:
+  level: debug
+  file: /app/logs/app.log
+swagger:
+  enabled: true
+database:
+  name: platform
+  schema: workflow
+grpc:
+  reflection_enabled: true
+temporal:
+  enabled: true
+  host_port: temporal:7233
+event_bus:
+  enabled: true
+  urls: [nats://nats:4222]
+  stream_name: PLATFORM_EVENTS
+  subjects: [platform.>]
+outbound:
+  grpc:
+    authorization-service:
+      target: authorization-service:9090
+      timeout: 5s
+      retry:
+        max_attempts: 3
+        initial_backoff: 100ms
+        max_backoff: 1s
+        methods: [/platform.authorization.v1.AuthorizationService/Check, /platform.authorization.v1.AuthorizationService/ListBindings]
+      breaker:
+        enabled: true
+        failure_threshold: 5
+        open_timeout: 30s
+      tls:
+        enabled: false
