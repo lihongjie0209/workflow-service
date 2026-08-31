@@ -567,6 +567,12 @@ func taskDTO(value workflow.Task) TaskDTO {
 
 func rawObject(value json.RawMessage) json.RawMessage {
 	if len(value) > 0 && json.Valid(value) {
+		if value[0] == '"' {
+			var legacy string
+			if json.Unmarshal(value, &legacy) == nil && json.Valid([]byte(legacy)) {
+				return json.RawMessage(legacy)
+			}
+		}
 		return value
 	}
 	return json.RawMessage(`{}`)

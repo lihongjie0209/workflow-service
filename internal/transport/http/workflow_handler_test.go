@@ -44,3 +44,13 @@ func TestWorkflowNodeRequestUsesStructuredJSON(t *testing.T) {
 		t.Fatalf("nodesFromDTO() = %#v", nodes)
 	}
 }
+
+func TestWorkflowNodeRequestAcceptsLegacyJSONString(t *testing.T) {
+	nodes := nodesFromDTO([]WorkflowNodeDTO{{
+		ID: "service", Name: "Call", Type: "service",
+		RequestTemplateJSON: json.RawMessage(`"{\"id\":\"${id}\"}"`),
+	}})
+	if len(nodes) != 1 || nodes[0].RequestTemplateJSON != `{"id":"${id}"}` {
+		t.Fatalf("nodesFromDTO() = %#v", nodes)
+	}
+}
