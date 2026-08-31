@@ -1479,7 +1479,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "output_json": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "tenant_id": {
                     "type": "string"
@@ -1691,7 +1691,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "result_json": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "started_at": {
                     "type": "string"
@@ -1715,7 +1715,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "variables_json": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "version": {
                     "type": "integer"
@@ -1918,7 +1918,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "variables_json": {
-                    "type": "string"
+                    "type": "object"
                 }
             }
         },
@@ -1956,7 +1956,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "input_json": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "instance_id": {
                     "type": "string"
@@ -1968,7 +1968,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "output_json": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "status": {
                     "type": "string"
@@ -2108,7 +2108,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "config_json": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "full_method": {
                     "type": "string"
@@ -2120,7 +2120,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "request_template_json": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "target_service": {
                     "type": "string"

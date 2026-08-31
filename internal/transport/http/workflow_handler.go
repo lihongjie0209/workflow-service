@@ -1,6 +1,7 @@
 package httptransport
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -11,18 +12,18 @@ import (
 )
 
 type WorkflowNodeDTO struct {
-	ID                  string `json:"id" binding:"required"`
-	Name                string `json:"name" binding:"required"`
-	Type                string `json:"type" binding:"required"`
-	AssigneeType        string `json:"assignee_type,omitempty"`
-	Assignee            string `json:"assignee,omitempty"`
-	TimeoutSeconds      uint32 `json:"timeout_seconds,omitempty"`
-	TargetService       string `json:"target_service,omitempty"`
-	FullMethod          string `json:"full_method,omitempty"`
-	RequestTemplateJSON string `json:"request_template_json,omitempty"`
-	CompensationMethod  string `json:"compensation_method,omitempty"`
-	TimerSeconds        uint32 `json:"timer_seconds,omitempty"`
-	ConfigJSON          string `json:"config_json,omitempty"`
+	ID                  string          `json:"id" binding:"required"`
+	Name                string          `json:"name" binding:"required"`
+	Type                string          `json:"type" binding:"required"`
+	AssigneeType        string          `json:"assignee_type,omitempty"`
+	Assignee            string          `json:"assignee,omitempty"`
+	TimeoutSeconds      uint32          `json:"timeout_seconds,omitempty"`
+	TargetService       string          `json:"target_service,omitempty"`
+	FullMethod          string          `json:"full_method,omitempty"`
+	RequestTemplateJSON json.RawMessage `json:"request_template_json,omitempty" swaggertype:"object"`
+	CompensationMethod  string          `json:"compensation_method,omitempty"`
+	TimerSeconds        uint32          `json:"timer_seconds,omitempty"`
+	ConfigJSON          json.RawMessage `json:"config_json,omitempty" swaggertype:"object"`
 }
 type WorkflowEdgeDTO struct {
 	FromNodeID          string `json:"from_node_id" binding:"required"`
@@ -48,48 +49,48 @@ type DefinitionDTO struct {
 	UpdatedBy         string            `json:"updated_by"`
 }
 type InstanceDTO struct {
-	ID                 string     `json:"id"`
-	TenantID           string     `json:"tenant_id"`
-	DefinitionID       string     `json:"definition_id"`
-	DefinitionRevision uint32     `json:"definition_revision"`
-	BusinessKey        string     `json:"business_key"`
-	Title              string     `json:"title"`
-	StarterID          string     `json:"starter_id"`
-	Status             string     `json:"status"`
-	CurrentNodeID      string     `json:"current_node_id"`
-	VariablesJSON      string     `json:"variables_json"`
-	ResultJSON         string     `json:"result_json"`
-	ErrorCode          string     `json:"error_code"`
-	ErrorMessage       string     `json:"error_message"`
-	StartedAt          time.Time  `json:"started_at"`
-	FinishedAt         *time.Time `json:"finished_at,omitempty"`
-	Version            int64      `json:"version"`
-	CreatedAt          time.Time  `json:"created_at"`
-	UpdatedAt          time.Time  `json:"updated_at"`
-	CreatedBy          string     `json:"created_by"`
-	UpdatedBy          string     `json:"updated_by"`
+	ID                 string          `json:"id"`
+	TenantID           string          `json:"tenant_id"`
+	DefinitionID       string          `json:"definition_id"`
+	DefinitionRevision uint32          `json:"definition_revision"`
+	BusinessKey        string          `json:"business_key"`
+	Title              string          `json:"title"`
+	StarterID          string          `json:"starter_id"`
+	Status             string          `json:"status"`
+	CurrentNodeID      string          `json:"current_node_id"`
+	VariablesJSON      json.RawMessage `json:"variables_json" swaggertype:"object"`
+	ResultJSON         json.RawMessage `json:"result_json" swaggertype:"object"`
+	ErrorCode          string          `json:"error_code"`
+	ErrorMessage       string          `json:"error_message"`
+	StartedAt          time.Time       `json:"started_at"`
+	FinishedAt         *time.Time      `json:"finished_at,omitempty"`
+	Version            int64           `json:"version"`
+	CreatedAt          time.Time       `json:"created_at"`
+	UpdatedAt          time.Time       `json:"updated_at"`
+	CreatedBy          string          `json:"created_by"`
+	UpdatedBy          string          `json:"updated_by"`
 }
 type TaskDTO struct {
-	ID           string     `json:"id"`
-	TenantID     string     `json:"tenant_id"`
-	InstanceID   string     `json:"instance_id"`
-	NodeID       string     `json:"node_id"`
-	Name         string     `json:"name"`
-	AssigneeType string     `json:"assignee_type"`
-	Assignee     string     `json:"assignee"`
-	ClaimedBy    string     `json:"claimed_by"`
-	Status       string     `json:"status"`
-	Decision     string     `json:"decision"`
-	Comment      string     `json:"comment"`
-	InputJSON    string     `json:"input_json"`
-	OutputJSON   string     `json:"output_json"`
-	DueAt        *time.Time `json:"due_at,omitempty"`
-	CompletedAt  *time.Time `json:"completed_at,omitempty"`
-	Version      int64      `json:"version"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
-	CreatedBy    string     `json:"created_by"`
-	UpdatedBy    string     `json:"updated_by"`
+	ID           string          `json:"id"`
+	TenantID     string          `json:"tenant_id"`
+	InstanceID   string          `json:"instance_id"`
+	NodeID       string          `json:"node_id"`
+	Name         string          `json:"name"`
+	AssigneeType string          `json:"assignee_type"`
+	Assignee     string          `json:"assignee"`
+	ClaimedBy    string          `json:"claimed_by"`
+	Status       string          `json:"status"`
+	Decision     string          `json:"decision"`
+	Comment      string          `json:"comment"`
+	InputJSON    json.RawMessage `json:"input_json" swaggertype:"object"`
+	OutputJSON   json.RawMessage `json:"output_json" swaggertype:"object"`
+	DueAt        *time.Time      `json:"due_at,omitempty"`
+	CompletedAt  *time.Time      `json:"completed_at,omitempty"`
+	Version      int64           `json:"version"`
+	CreatedAt    time.Time       `json:"created_at"`
+	UpdatedAt    time.Time       `json:"updated_at"`
+	CreatedBy    string          `json:"created_by"`
+	UpdatedBy    string          `json:"updated_by"`
 }
 type PageDTO[T any] struct {
 	Items    []T   `json:"items"`
@@ -136,12 +137,12 @@ type ListDefinitionsRequest struct {
 	PageSize      int    `json:"page_size"`
 }
 type StartInstanceRequest struct {
-	TenantID       string `json:"tenant_id" binding:"required"`
-	DefinitionKey  string `json:"definition_key" binding:"required"`
-	BusinessKey    string `json:"business_key" binding:"required"`
-	Title          string `json:"title" binding:"required"`
-	VariablesJSON  string `json:"variables_json"`
-	IdempotencyKey string `json:"idempotency_key" binding:"required"`
+	TenantID       string          `json:"tenant_id" binding:"required"`
+	DefinitionKey  string          `json:"definition_key" binding:"required"`
+	BusinessKey    string          `json:"business_key" binding:"required"`
+	Title          string          `json:"title" binding:"required"`
+	VariablesJSON  json.RawMessage `json:"variables_json" swaggertype:"object"`
+	IdempotencyKey string          `json:"idempotency_key" binding:"required"`
 }
 type CancelInstanceRequest struct {
 	ID              string `json:"id" binding:"required"`
@@ -170,12 +171,12 @@ type TaskVersionRequest struct {
 	ExpectedVersion int64  `json:"expected_version" binding:"required"`
 }
 type CompleteTaskRequest struct {
-	ID              string `json:"id" binding:"required"`
-	TenantID        string `json:"tenant_id" binding:"required"`
-	Decision        string `json:"decision" binding:"required"`
-	Comment         string `json:"comment"`
-	OutputJSON      string `json:"output_json"`
-	ExpectedVersion int64  `json:"expected_version" binding:"required"`
+	ID              string          `json:"id" binding:"required"`
+	TenantID        string          `json:"tenant_id" binding:"required"`
+	Decision        string          `json:"decision" binding:"required"`
+	Comment         string          `json:"comment"`
+	OutputJSON      json.RawMessage `json:"output_json" swaggertype:"object"`
+	ExpectedVersion int64           `json:"expected_version" binding:"required"`
 }
 type DelegateTaskRequest struct {
 	ID              string `json:"id" binding:"required"`
@@ -330,7 +331,7 @@ func (h *Handler) StartInstance(c *gin.Context) {
 	if !bind(c, h, &request) {
 		return
 	}
-	value, err := h.workflow.StartInstance(c.Request.Context(), workflow.StartInstanceInput{TenantID: request.TenantID, DefinitionKey: request.DefinitionKey, BusinessKey: request.BusinessKey, Title: request.Title, VariablesJSON: request.VariablesJSON, IdempotencyKey: request.IdempotencyKey})
+	value, err := h.workflow.StartInstance(c.Request.Context(), workflow.StartInstanceInput{TenantID: request.TenantID, DefinitionKey: request.DefinitionKey, BusinessKey: request.BusinessKey, Title: request.Title, VariablesJSON: string(rawObject(request.VariablesJSON)), IdempotencyKey: request.IdempotencyKey})
 	respond(c, h, instanceDTO(value), err)
 }
 
@@ -429,7 +430,7 @@ func (h *Handler) CompleteTask(c *gin.Context) {
 	if !bind(c, h, &request) {
 		return
 	}
-	task, instance, err := h.workflow.CompleteTask(c.Request.Context(), request.TenantID, request.ID, request.Decision, request.Comment, request.OutputJSON, request.ExpectedVersion)
+	task, instance, err := h.workflow.CompleteTask(c.Request.Context(), request.TenantID, request.ID, request.Decision, request.Comment, string(rawObject(request.OutputJSON)), request.ExpectedVersion)
 	respond(c, h, gin.H{"task": taskDTO(task), "instance": instanceDTO(instance)}, err)
 }
 
@@ -535,7 +536,7 @@ func workflowHTTPError(err error) error {
 func nodesFromDTO(values []WorkflowNodeDTO) []workflow.Node {
 	result := make([]workflow.Node, 0, len(values))
 	for _, value := range values {
-		result = append(result, workflow.Node{ID: value.ID, Name: value.Name, Type: value.Type, AssigneeType: value.AssigneeType, Assignee: value.Assignee, TimeoutSeconds: value.TimeoutSeconds, TargetService: value.TargetService, FullMethod: value.FullMethod, RequestTemplateJSON: value.RequestTemplateJSON, CompensationMethod: value.CompensationMethod, TimerSeconds: value.TimerSeconds, ConfigJSON: value.ConfigJSON})
+		result = append(result, workflow.Node{ID: value.ID, Name: value.Name, Type: value.Type, AssigneeType: value.AssigneeType, Assignee: value.Assignee, TimeoutSeconds: value.TimeoutSeconds, TargetService: value.TargetService, FullMethod: value.FullMethod, RequestTemplateJSON: string(rawObject(value.RequestTemplateJSON)), CompensationMethod: value.CompensationMethod, TimerSeconds: value.TimerSeconds, ConfigJSON: string(rawObject(value.ConfigJSON))})
 	}
 	return result
 }
@@ -549,7 +550,7 @@ func edgesFromDTO(values []WorkflowEdgeDTO) []workflow.Edge {
 func definitionDTO(value workflow.Definition) DefinitionDTO {
 	nodes := make([]WorkflowNodeDTO, 0, len(value.Nodes))
 	for _, node := range value.Nodes {
-		nodes = append(nodes, WorkflowNodeDTO{ID: node.ID, Name: node.Name, Type: node.Type, AssigneeType: node.AssigneeType, Assignee: node.Assignee, TimeoutSeconds: node.TimeoutSeconds, TargetService: node.TargetService, FullMethod: node.FullMethod, RequestTemplateJSON: node.RequestTemplateJSON, CompensationMethod: node.CompensationMethod, TimerSeconds: node.TimerSeconds, ConfigJSON: node.ConfigJSON})
+		nodes = append(nodes, WorkflowNodeDTO{ID: node.ID, Name: node.Name, Type: node.Type, AssigneeType: node.AssigneeType, Assignee: node.Assignee, TimeoutSeconds: node.TimeoutSeconds, TargetService: node.TargetService, FullMethod: node.FullMethod, RequestTemplateJSON: rawObject(json.RawMessage(node.RequestTemplateJSON)), CompensationMethod: node.CompensationMethod, TimerSeconds: node.TimerSeconds, ConfigJSON: rawObject(json.RawMessage(node.ConfigJSON))})
 	}
 	edges := make([]WorkflowEdgeDTO, 0, len(value.Edges))
 	for _, edge := range value.Edges {
@@ -558,8 +559,15 @@ func definitionDTO(value workflow.Definition) DefinitionDTO {
 	return DefinitionDTO{ID: value.ID, TenantID: value.TenantID, ApplicationID: value.ApplicationID, Key: value.Key, Name: value.Name, Description: value.Description, Status: value.Status, PublishedRevision: value.PublishedRevision, Nodes: nodes, Edges: edges, Version: value.Version, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt, CreatedBy: value.CreatedBy, UpdatedBy: value.UpdatedBy}
 }
 func instanceDTO(value workflow.Instance) InstanceDTO {
-	return InstanceDTO{ID: value.ID, TenantID: value.TenantID, DefinitionID: value.DefinitionID, DefinitionRevision: value.DefinitionRevision, BusinessKey: value.BusinessKey, Title: value.Title, StarterID: value.StarterID, Status: value.Status, CurrentNodeID: value.CurrentNodeID, VariablesJSON: value.VariablesJSON, ResultJSON: value.ResultJSON, ErrorCode: value.ErrorCode, ErrorMessage: value.ErrorMessage, StartedAt: value.StartedAt, FinishedAt: value.FinishedAt, Version: value.Version, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt, CreatedBy: value.CreatedBy, UpdatedBy: value.UpdatedBy}
+	return InstanceDTO{ID: value.ID, TenantID: value.TenantID, DefinitionID: value.DefinitionID, DefinitionRevision: value.DefinitionRevision, BusinessKey: value.BusinessKey, Title: value.Title, StarterID: value.StarterID, Status: value.Status, CurrentNodeID: value.CurrentNodeID, VariablesJSON: rawObject(json.RawMessage(value.VariablesJSON)), ResultJSON: rawObject(json.RawMessage(value.ResultJSON)), ErrorCode: value.ErrorCode, ErrorMessage: value.ErrorMessage, StartedAt: value.StartedAt, FinishedAt: value.FinishedAt, Version: value.Version, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt, CreatedBy: value.CreatedBy, UpdatedBy: value.UpdatedBy}
 }
 func taskDTO(value workflow.Task) TaskDTO {
-	return TaskDTO{ID: value.ID, TenantID: value.TenantID, InstanceID: value.InstanceID, NodeID: value.NodeID, Name: value.Name, AssigneeType: value.AssigneeType, Assignee: value.Assignee, ClaimedBy: value.ClaimedBy, Status: value.Status, Decision: value.Decision, Comment: value.Comment, InputJSON: value.InputJSON, OutputJSON: value.OutputJSON, DueAt: value.DueAt, CompletedAt: value.CompletedAt, Version: value.Version, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt, CreatedBy: value.CreatedBy, UpdatedBy: value.UpdatedBy}
+	return TaskDTO{ID: value.ID, TenantID: value.TenantID, InstanceID: value.InstanceID, NodeID: value.NodeID, Name: value.Name, AssigneeType: value.AssigneeType, Assignee: value.Assignee, ClaimedBy: value.ClaimedBy, Status: value.Status, Decision: value.Decision, Comment: value.Comment, InputJSON: rawObject(json.RawMessage(value.InputJSON)), OutputJSON: rawObject(json.RawMessage(value.OutputJSON)), DueAt: value.DueAt, CompletedAt: value.CompletedAt, Version: value.Version, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt, CreatedBy: value.CreatedBy, UpdatedBy: value.UpdatedBy}
+}
+
+func rawObject(value json.RawMessage) json.RawMessage {
+	if len(value) > 0 && json.Valid(value) {
+		return value
+	}
+	return json.RawMessage(`{}`)
 }

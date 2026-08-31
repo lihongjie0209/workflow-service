@@ -56,7 +56,7 @@ definitions:
       id:
         type: string
       output_json:
-        type: string
+        type: object
       tenant_id:
         type: string
     required:
@@ -204,7 +204,7 @@ definitions:
       id:
         type: string
       result_json:
-        type: string
+        type: object
       started_at:
         type: string
       starter_id:
@@ -220,7 +220,7 @@ definitions:
       updated_by:
         type: string
       variables_json:
-        type: string
+        type: object
       version:
         type: integer
     type: object
@@ -348,7 +348,7 @@ definitions:
       title:
         type: string
       variables_json:
-        type: string
+        type: object
     required:
     - business_key
     - definition_key
@@ -379,7 +379,7 @@ definitions:
       id:
         type: string
       input_json:
-        type: string
+        type: object
       instance_id:
         type: string
       name:
@@ -387,7 +387,7 @@ definitions:
       node_id:
         type: string
       output_json:
-        type: string
+        type: object
       status:
         type: string
       tenant_id:
@@ -479,7 +479,7 @@ definitions:
       compensation_method:
         type: string
       config_json:
-        type: string
+        type: object
       full_method:
         type: string
       id:
@@ -487,7 +487,7 @@ definitions:
       name:
         type: string
       request_template_json:
-        type: string
+        type: object
       target_service:
         type: string
       timeout_seconds:

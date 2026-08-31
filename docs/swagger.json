@@ -1476,7 +1476,7 @@
                     "type": "string"
                 },
                 "output_json": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "tenant_id": {
                     "type": "string"
@@ -1688,7 +1688,7 @@
                     "type": "string"
                 },
                 "result_json": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "started_at": {
                     "type": "string"
@@ -1712,7 +1712,7 @@
                     "type": "string"
                 },
                 "variables_json": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "version": {
                     "type": "integer"
@@ -1915,7 +1915,7 @@
                     "type": "string"
                 },
                 "variables_json": {
-                    "type": "string"
+                    "type": "object"
                 }
             }
         },
@@ -1953,7 +1953,7 @@
                     "type": "string"
                 },
                 "input_json": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "instance_id": {
                     "type": "string"
@@ -1965,7 +1965,7 @@
                     "type": "string"
                 },
                 "output_json": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "status": {
                     "type": "string"
@@ -2105,7 +2105,7 @@
                     "type": "string"
                 },
                 "config_json": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "full_method": {
                     "type": "string"
@@ -2117,7 +2117,7 @@
                     "type": "string"
                 },
                 "request_template_json": {
-                    "type": "string"
+                    "type": "object"
                 },
                 "target_service": {
                     "type": "string"
