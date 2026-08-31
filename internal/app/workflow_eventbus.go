@@ -24,10 +24,6 @@ type workflowEventRuntime struct {
 	wg       sync.WaitGroup
 }
 
-type publishedOutboxStore interface {
-	DeletePublishedBefore(context.Context, time.Time, int) (int64, error)
-}
-
 func newWorkflowEventRuntime(lifecycle fx.Lifecycle, cfg config.Config, store *platformoutbox.SQLStore, bus *serviceeventbus.Bus, temporalRuntime *workflowruntime.Runtime, logger *slog.Logger) *workflowEventRuntime {
 	runtime := &workflowEventRuntime{config: cfg, store: store, bus: bus, temporal: temporalRuntime, logger: logger}
 	lifecycle.Append(fx.Hook{OnStart: runtime.start, OnStop: runtime.stop})
@@ -42,6 +38,10 @@ func (r *workflowEventRuntime) start(context.Context) error {
 		return errors.New("enabled workflow event bus requires database outbox and JetStream")
 	}
 	dispatcher, err := platformoutbox.New(r.store, r.bus, platformoutbox.Config{BatchSize: r.config.EventBus.DispatchBatchSize, Lease: r.config.EventBus.DispatchLease, RetryDelay: r.config.EventBus.DispatchRetryDelay})
+	if err != nil {
+		return err
+	}
+	cleaner, err := platformoutbox.NewRetentionCleaner(r.store, platformoutbox.RetentionConfig{Retention: r.config.EventBus.PublishedRetention, BatchSize: r.config.EventBus.CleanupBatchSize})
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (r *workflowEventRuntime) start(context.Context) error {
 			}
 		}
 	})
-	r.wg.Go(func() { r.runOutboxCleanup(runCtx) })
+	r.wg.Go(func() { r.runOutboxCleanup(runCtx, cleaner) })
 	if r.config.Temporal.Enabled {
 		handler, err := workflowruntime.NewCommandHandler(r.temporal, r.config.Temporal.TaskQueue)
 		if err != nil {
@@ -78,33 +78,17 @@ func (r *workflowEventRuntime) start(context.Context) error {
 	return nil
 }
 
-func (r *workflowEventRuntime) runOutboxCleanup(ctx context.Context) {
+func (r *workflowEventRuntime) runOutboxCleanup(ctx context.Context, cleaner *platformoutbox.RetentionCleaner) {
 	ticker := time.NewTicker(r.config.EventBus.CleanupInterval)
 	defer ticker.Stop()
 	for {
-		if err := cleanPublishedOutbox(ctx, r.store, r.config.EventBus.PublishedRetention, r.config.EventBus.CleanupBatchSize); err != nil && !errors.Is(err, context.Canceled) {
+		if _, err := cleaner.RunOnce(ctx); err != nil && !errors.Is(err, context.Canceled) {
 			r.logger.ErrorContext(ctx, "clean published workflow outbox events", "error", err)
 		}
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-		}
-	}
-}
-
-func cleanPublishedOutbox(ctx context.Context, store publishedOutboxStore, retention time.Duration, batchSize int) error {
-	if store == nil || retention <= 0 || batchSize <= 0 {
-		return errors.New("published outbox cleanup dependencies and limits are required")
-	}
-	cutoff := time.Now().Add(-retention)
-	for {
-		deleted, err := store.DeletePublishedBefore(ctx, cutoff, batchSize)
-		if err != nil {
-			return err
-		}
-		if deleted < int64(batchSize) {
-			return nil
 		}
 	}
 }
