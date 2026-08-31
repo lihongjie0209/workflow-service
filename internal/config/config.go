@@ -27,6 +27,7 @@ type Config struct {
 	Swagger       Swagger       `mapstructure:"swagger"`
 	JWT           JWT           `mapstructure:"jwt"`
 	Auth          Auth          `mapstructure:"auth"`
+	Authorization Authorization `mapstructure:"authorization"`
 	Migration     Migration     `mapstructure:"migration"`
 	Idempotency   Idempotency   `mapstructure:"idempotency"`
 	Outbound      Outbound      `mapstructure:"outbound"`
@@ -158,6 +159,9 @@ type PSK struct {
 	Key         string   `mapstructure:"key"`
 	HTTPPaths   []string `mapstructure:"http_paths"`
 	GRPCMethods []string `mapstructure:"grpc_methods"`
+}
+type Authorization struct {
+	Enabled bool `mapstructure:"enabled"`
 }
 type Migration struct {
 	AutoUp       bool   `mapstructure:"auto_up"`
@@ -401,6 +405,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("auth.psk.key", "")
 	v.SetDefault("auth.psk.http_paths", []string{})
 	v.SetDefault("auth.psk.grpc_methods", []string{})
+	v.SetDefault("authorization.enabled", false)
 	v.SetDefault("migration.path", "migrations/postgres")
 	v.SetDefault("migration.database_url", "")
 	v.SetDefault("migration.auto_up", false)
@@ -514,6 +519,14 @@ func (c Config) Validate() error {
 	}
 	if c.App.Env == "production" && (c.Auth.JWKSURL == "" || c.Auth.Issuer == "" || c.Auth.Audience == "") {
 		return errors.New("production authentication requires identity JWKS URL, issuer, and workflow-service audience")
+	}
+	if c.App.Env == "production" && !c.Authorization.Enabled {
+		return errors.New("authorization must be enabled in production")
+	}
+	if c.Authorization.Enabled {
+		if _, ok := c.Outbound.GRPC["authorization"]; !ok {
+			return errors.New("enabled authorization requires outbound.grpc.authorization")
+		}
 	}
 	if (c.Auth.ClientID != "" || c.Auth.ClientSecret != "") && len(c.JWT.Secret) < 32 {
 		return errors.New("jwt.secret must contain at least 32 bytes when auth is enabled")

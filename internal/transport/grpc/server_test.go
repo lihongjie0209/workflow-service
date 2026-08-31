@@ -4,13 +4,30 @@ import (
 	"testing"
 	"time"
 
+	platformauthz "github.com/lihongjie0209/microservice-platform-go/authz"
 	platformprincipal "github.com/lihongjie0209/microservice-platform-go/principal"
+	workflowv1 "github.com/lihongjie0209/platform-protos/gen/go/platform/workflow/v1"
 	"github.com/lihongjie0209/workflow-service/internal/auth"
 	"github.com/lihongjie0209/workflow-service/internal/config"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
+
+func TestWorkflowGRPCRequirementCoversEveryBusinessMethod(t *testing.T) {
+	t.Parallel()
+	resolve := workflowGRPCRequirement(true)
+	methods := []string{workflowv1.WorkflowService_CreateDefinition_FullMethodName, workflowv1.WorkflowService_UpdateDefinition_FullMethodName, workflowv1.WorkflowService_PublishDefinition_FullMethodName, workflowv1.WorkflowService_DisableDefinition_FullMethodName, workflowv1.WorkflowService_GetDefinition_FullMethodName, workflowv1.WorkflowService_ListDefinitions_FullMethodName, workflowv1.WorkflowService_StartInstance_FullMethodName, workflowv1.WorkflowService_CancelInstance_FullMethodName, workflowv1.WorkflowService_GetInstance_FullMethodName, workflowv1.WorkflowService_ListInstances_FullMethodName, workflowv1.WorkflowService_ClaimTask_FullMethodName, workflowv1.WorkflowService_CompleteTask_FullMethodName, workflowv1.WorkflowService_DelegateTask_FullMethodName, workflowv1.WorkflowService_GetTask_FullMethodName, workflowv1.WorkflowService_ListTasks_FullMethodName}
+	for _, method := range methods {
+		requirement, ok := resolve(method)
+		if !ok || requirement.Resource == "" || requirement.Action == "" || requirement.Scope != platformauthz.ScopePrincipal {
+			t.Fatalf("method %q requirement = %+v, %v", method, requirement, ok)
+		}
+	}
+	if _, ok := workflowGRPCRequirement(false)(workflowv1.WorkflowService_ListTasks_FullMethodName); ok {
+		t.Fatal("disabled authorization must not enforce")
+	}
+}
 
 func TestAuthenticateGRPC_PSKWildcard(t *testing.T) {
 	t.Parallel()

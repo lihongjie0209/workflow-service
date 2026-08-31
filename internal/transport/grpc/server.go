@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	platformauthz "github.com/lihongjie0209/microservice-platform-go/authz"
 	platformprincipal "github.com/lihongjie0209/microservice-platform-go/principal"
 	workflowv1 "github.com/lihongjie0209/platform-protos/gen/go/platform/workflow/v1"
 	"github.com/lihongjie0209/workflow-service/internal/auth"
@@ -40,11 +41,11 @@ type Server struct {
 	logger  *slog.Logger
 }
 
-func NewServer(lc fx.Lifecycle, cfg config.Config, authService *auth.Service, workflowService *workflow.Service, healthService *apphealth.Service, metrics *observability.Metrics, logger *slog.Logger) (*Server, error) {
+func NewServer(lc fx.Lifecycle, cfg config.Config, authService *auth.Service, authorizer platformauthz.Authorizer, workflowService *workflow.Service, healthService *apphealth.Service, metrics *observability.Metrics, logger *slog.Logger) (*Server, error) {
 	options := []grpc.ServerOption{
 		grpc.MaxRecvMsgSize(cfg.GRPC.MaxReceiveBytes),
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
-		grpc.ChainUnaryInterceptor(environmentInterceptor(cfg.Runtime.ActiveProfile), requestIDInterceptor, idempotencyInterceptor, recoveryInterceptor(logger), authInterceptor(authService, cfg.Auth), metricsInterceptor(metrics, logger)),
+		grpc.ChainUnaryInterceptor(environmentInterceptor(cfg.Runtime.ActiveProfile), requestIDInterceptor, idempotencyInterceptor, recoveryInterceptor(logger), authInterceptor(authService, cfg.Auth), platformauthz.UnaryServerInterceptor(authorizer, workflowGRPCRequirement(cfg.Authorization.Enabled)), metricsInterceptor(metrics, logger)),
 		grpc.ChainStreamInterceptor(environmentStreamInterceptor(cfg.Runtime.ActiveProfile), requestIDStreamInterceptor, idempotencyStreamInterceptor, recoveryStreamInterceptor(logger), authStreamInterceptor(authService, cfg.Auth), metricsStreamInterceptor(metrics, logger)),
 	}
 	if cfg.GRPC.TLS.Enabled {
@@ -65,6 +66,34 @@ func NewServer(lc fx.Lifecycle, cfg config.Config, authService *auth.Service, wo
 	server := &Server{server: grpcServer, address: cfg.GRPC.Address, logger: logger}
 	lc.Append(fx.Hook{OnStart: server.start(cfg.GRPC.Enabled), OnStop: server.stop})
 	return server, nil
+}
+
+func workflowGRPCRequirement(enabled bool) platformauthz.GRPCResolver {
+	return func(method string) (platformauthz.Requirement, bool) {
+		if !enabled {
+			return platformauthz.Requirement{}, false
+		}
+		principal := platformauthz.ScopePrincipal
+		requirements := map[string]platformauthz.Requirement{
+			workflowv1.WorkflowService_CreateDefinition_FullMethodName:  {Resource: "workflow.definition", Action: "create", Scope: principal},
+			workflowv1.WorkflowService_UpdateDefinition_FullMethodName:  {Resource: "workflow.definition", Action: "update", Scope: principal},
+			workflowv1.WorkflowService_PublishDefinition_FullMethodName: {Resource: "workflow.definition", Action: "publish", Scope: principal},
+			workflowv1.WorkflowService_DisableDefinition_FullMethodName: {Resource: "workflow.definition", Action: "disable", Scope: principal},
+			workflowv1.WorkflowService_GetDefinition_FullMethodName:     {Resource: "workflow.definition", Action: "read", Scope: principal},
+			workflowv1.WorkflowService_ListDefinitions_FullMethodName:   {Resource: "workflow.definition", Action: "list", Scope: principal},
+			workflowv1.WorkflowService_StartInstance_FullMethodName:     {Resource: "workflow.instance", Action: "start", Scope: principal},
+			workflowv1.WorkflowService_CancelInstance_FullMethodName:    {Resource: "workflow.instance", Action: "cancel", Scope: principal},
+			workflowv1.WorkflowService_GetInstance_FullMethodName:       {Resource: "workflow.instance", Action: "read", Scope: principal},
+			workflowv1.WorkflowService_ListInstances_FullMethodName:     {Resource: "workflow.instance", Action: "list", Scope: principal},
+			workflowv1.WorkflowService_ClaimTask_FullMethodName:         {Resource: "workflow.task", Action: "claim", Scope: principal},
+			workflowv1.WorkflowService_CompleteTask_FullMethodName:      {Resource: "workflow.task", Action: "complete", Scope: principal},
+			workflowv1.WorkflowService_DelegateTask_FullMethodName:      {Resource: "workflow.task", Action: "delegate", Scope: principal},
+			workflowv1.WorkflowService_GetTask_FullMethodName:           {Resource: "workflow.task", Action: "read", Scope: principal},
+			workflowv1.WorkflowService_ListTasks_FullMethodName:         {Resource: "workflow.task", Action: "list", Scope: principal},
+		}
+		requirement, ok := requirements[method]
+		return requirement, ok
+	}
 }
 
 func (s *Server) start(enabled bool) func(context.Context) error {
