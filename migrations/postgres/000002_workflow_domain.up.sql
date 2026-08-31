@@ -111,6 +111,7 @@ CREATE TABLE workflow_task_history (
   updated_by TEXT NOT NULL
 );
 CREATE INDEX idx_workflow_task_history_task ON workflow_task_history(tenant_id,task_id,created_at,id);
+CREATE INDEX idx_workflow_task_history_retention ON workflow_task_history(created_at,id);
 
 CREATE TABLE workflow_outbox_events (
   id TEXT PRIMARY KEY,
@@ -128,7 +129,7 @@ CREATE TABLE workflow_outbox_events (
 );
 CREATE INDEX idx_workflow_outbox_pending ON workflow_outbox_events(published_at,available_at,created_at);
 
--- Workflow/task histories are expected to grow quickly. The service owns a
--- configurable retention cleanup first; native time partitioning is introduced
--- only after volume measurement because task IDs and idempotency keys must
--- remain globally unique. pg_partman remains an optional DBA automation layer.
+-- Task history defaults to 365-day bounded cleanup after its owning workflow is
+-- terminal. Archive through export/CDC before deletion where policy requires it.
+-- Native time partitioning is introduced only after identity constraints include
+-- a time bucket; pg_partman remains an optional DBA automation layer.

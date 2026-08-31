@@ -21,6 +21,26 @@ func TestLoad_EnvironmentOverridesFile(t *testing.T) {
 	if cfg.HTTP.Address != "127.0.0.1:9090" {
 		t.Fatalf("HTTP.Address = %q, want %q", cfg.HTTP.Address, "127.0.0.1:9090")
 	}
+	if cfg.Retention.TaskHistory != 365*24*time.Hour || cfg.Retention.CleanupInterval != time.Hour || cfg.Retention.CleanupBatchSize != 500 {
+		t.Fatalf("unexpected workflow retention defaults: %+v", cfg.Retention)
+	}
+}
+
+func TestLoad_WorkflowRetentionEnvironmentOverrides(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(path, []byte("http:\n  address: 127.0.0.1:8080\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("APP_RETENTION_TASK_HISTORY", "17520h")
+	t.Setenv("APP_RETENTION_CLEANUP_BATCH_SIZE", "250")
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.Retention.TaskHistory != 730*24*time.Hour || cfg.Retention.CleanupBatchSize != 250 {
+		t.Fatalf("unexpected workflow retention overrides: %+v", cfg.Retention)
+	}
 }
 
 func TestConfig_ValidateJWTSecret(t *testing.T) {

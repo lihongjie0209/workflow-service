@@ -145,6 +145,11 @@ temporal:
     cert_file: ""
     key_file: ""
 
+retention:
+  task_history: 8760h
+  cleanup_interval: 1h
+  cleanup_batch_size: 500
+
 # Named outbound clients. Put environment-specific endpoints and credentials in
 # config-{env}.yaml or APP_ variables.
 outbound:

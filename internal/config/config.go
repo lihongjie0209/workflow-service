@@ -32,6 +32,7 @@ type Config struct {
 	Outbound      Outbound      `mapstructure:"outbound"`
 	EventBus      EventBus      `mapstructure:"event_bus"`
 	Temporal      Temporal      `mapstructure:"temporal"`
+	Retention     Retention     `mapstructure:"retention"`
 }
 
 type Runtime struct {
@@ -205,6 +206,11 @@ type Temporal struct {
 	ConnectTimeout    time.Duration `mapstructure:"connect_timeout"`
 	WorkerStopTimeout time.Duration `mapstructure:"worker_stop_timeout"`
 	TLS               ClientTLS     `mapstructure:"tls"`
+}
+type Retention struct {
+	TaskHistory      time.Duration `mapstructure:"task_history"`
+	CleanupInterval  time.Duration `mapstructure:"cleanup_interval"`
+	CleanupBatchSize int           `mapstructure:"cleanup_batch_size"`
 }
 type Outbound struct {
 	HTTP map[string]HTTPUpstream `mapstructure:"http"`
@@ -434,6 +440,9 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("temporal.tls.ca_file", "")
 	v.SetDefault("temporal.tls.cert_file", "")
 	v.SetDefault("temporal.tls.key_file", "")
+	v.SetDefault("retention.task_history", "8760h")
+	v.SetDefault("retention.cleanup_interval", "1h")
+	v.SetDefault("retention.cleanup_batch_size", 500)
 	v.SetDefault("outbound.http", map[string]any{})
 	v.SetDefault("outbound.grpc", map[string]any{})
 }
@@ -558,6 +567,9 @@ func (c Config) Validate() error {
 	}
 	if c.Temporal.TLS.Enabled && (c.Temporal.TLS.CertFile == "") != (c.Temporal.TLS.KeyFile == "") {
 		return errors.New("temporal TLS certificate and key must be configured together")
+	}
+	if c.Retention.TaskHistory <= 0 || c.Retention.CleanupInterval <= 0 || c.Retention.CleanupBatchSize <= 0 {
+		return errors.New("workflow retention values must be positive")
 	}
 	for name, upstream := range c.Outbound.HTTP {
 		if upstream.BaseURL == "" || upstream.Timeout <= 0 {

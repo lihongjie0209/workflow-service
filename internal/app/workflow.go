@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"log/slog"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lihongjie0209/microservice-platform-go/dynamicgrpc"
@@ -76,6 +77,11 @@ var WorkflowModule = fx.Module("workflow",
 		newWorkflowActivities,
 		workflowruntime.NewRuntime,
 		newWorkflowEventRuntime,
+		newWorkflowRetentionCleaner,
 	),
-	fx.Invoke(func(*workflowEventRuntime, *workflowruntime.Runtime) {}),
+	fx.Invoke(func(*workflowEventRuntime, *workflowruntime.Runtime, *workflow.RetentionCleaner) {}),
 )
+
+func newWorkflowRetentionCleaner(lifecycle fx.Lifecycle, repository *workflow.Repository, cfg config.Config, logger *slog.Logger) (*workflow.RetentionCleaner, error) {
+	return workflow.NewRetentionCleaner(lifecycle, repository, logger, cfg)
+}

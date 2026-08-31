@@ -4,6 +4,8 @@
 
 本仓库不包含 Web UI，也不复制其他服务的数据库或 Proto。身份由 identity-service 签发，角色与任务分配从 authorization-service 查询，服务间合约来自固定版本的 `platform-protos`。
 
+终态流程的任务历史默认保留 365 天，服务按 500 条有界批次清理。合规场景在删除前通过数据导出或 CDC 归档；由于任务 ID 与流程身份保持全局唯一，时间分区需先完成包含时间桶的身份约束演进，之后再使用 PostgreSQL 原生分区和可选 `pg_partman`。
+
 ## 执行链路
 
 ```text

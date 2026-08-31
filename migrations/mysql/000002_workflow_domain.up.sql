@@ -55,6 +55,7 @@ CREATE TABLE workflow_task_history (
   version BIGINT NOT NULL DEFAULT 1, created_at DATETIME(6) NOT NULL, updated_at DATETIME(6) NOT NULL,
   created_by VARCHAR(255) NOT NULL, updated_by VARCHAR(255) NOT NULL,
   INDEX idx_workflow_task_history_task (tenant_id,task_id,created_at,id),
+  INDEX idx_workflow_task_history_retention (created_at,id),
   CONSTRAINT fk_workflow_history_task FOREIGN KEY (task_id) REFERENCES workflow_tasks(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

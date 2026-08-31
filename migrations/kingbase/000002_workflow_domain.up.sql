@@ -44,6 +44,7 @@ CREATE TABLE workflow_task_history (
   updated_at TIMESTAMPTZ NOT NULL, created_by TEXT NOT NULL, updated_by TEXT NOT NULL
 );
 CREATE INDEX idx_workflow_task_history_task ON workflow_task_history(tenant_id,task_id,created_at,id);
+CREATE INDEX idx_workflow_task_history_retention ON workflow_task_history(created_at,id);
 CREATE TABLE workflow_outbox_events (
   id TEXT PRIMARY KEY, subject TEXT NOT NULL, envelope BYTEA NOT NULL, attempts INTEGER NOT NULL DEFAULT 0,
   available_at TIMESTAMPTZ NOT NULL, published_at TIMESTAMPTZ NULL, last_error TEXT NOT NULL DEFAULT '',

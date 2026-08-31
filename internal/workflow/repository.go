@@ -45,6 +45,23 @@ func NewRepository(db *sqlx.DB, outbox TransactionalEventStore, events EventFact
 	return &Repository{db: db, outbox: outbox, events: events, now: time.Now}, nil
 }
 
+func (r *Repository) DeleteTaskHistoryBefore(ctx context.Context, before time.Time, limit int) (int64, error) {
+	var ids []string
+	query := r.db.Rebind(`SELECT h.id FROM workflow_task_history h JOIN workflow_instances i ON i.id=h.instance_id AND i.tenant_id=h.tenant_id WHERE i.status IN ('completed','rejected','cancelled','failed') AND i.finished_at<? ORDER BY h.created_at,h.id LIMIT ?`)
+	if err := r.db.SelectContext(ctx, &ids, query, before, limit); err != nil || len(ids) == 0 {
+		return 0, err
+	}
+	query, args, err := sqlx.In(`DELETE FROM workflow_task_history WHERE id IN (?)`, ids)
+	if err != nil {
+		return 0, err
+	}
+	result, err := r.db.ExecContext(ctx, r.db.Rebind(query), args...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 func (r *Repository) CreateDefinition(ctx context.Context, value Definition) (Definition, error) {
 	query := r.db.Rebind(`INSERT INTO workflow_definitions (` + definitionColumns + `) VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?,?,?)`)
 	if _, err := r.db.ExecContext(ctx, query, value.ID, value.TenantID, value.ApplicationID, value.Key, value.Name, value.Description, value.Status, value.PublishedRevision, value.NodesJSON, value.EdgesJSON, value.CreatedAt, value.UpdatedAt, value.CreatedBy, value.UpdatedBy); err != nil {
