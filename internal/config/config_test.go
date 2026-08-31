@@ -24,6 +24,9 @@ func TestLoad_EnvironmentOverridesFile(t *testing.T) {
 	if cfg.Retention.TaskHistory != 365*24*time.Hour || cfg.Retention.CleanupInterval != time.Hour || cfg.Retention.CleanupBatchSize != 500 {
 		t.Fatalf("unexpected workflow retention defaults: %+v", cfg.Retention)
 	}
+	if cfg.EventBus.PublishedRetention != 14*24*time.Hour || cfg.EventBus.CleanupInterval != time.Hour || cfg.EventBus.CleanupBatchSize != 500 {
+		t.Fatalf("unexpected outbox retention defaults: %+v", cfg.EventBus)
+	}
 }
 
 func TestLoad_WorkflowRetentionEnvironmentOverrides(t *testing.T) {
