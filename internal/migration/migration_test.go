@@ -3,10 +3,26 @@ package migration
 import (
 	"database/sql"
 	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
 )
+
+func TestMySQLApplicationScopeUsesIndexSafeIdentifierWidth(t *testing.T) {
+	t.Parallel()
+
+	contents, err := os.ReadFile(filepath.Join("..", "..", "migrations", "mysql", "000003_application_scope.up.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sql := string(contents)
+	if strings.Contains(sql, "application_id VARCHAR(255)") || strings.Count(sql, "application_id VARCHAR(36)") != 6 {
+		t.Fatalf("application_id width must preserve the utf8mb4 composite-index byte budget:\n%s", sql)
+	}
+}
 
 func TestWithMigrationTable(t *testing.T) {
 	t.Parallel()

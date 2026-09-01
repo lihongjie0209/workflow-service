@@ -49,7 +49,7 @@ func TestJetStreamDispatchesWorkflowStartCommand(t *testing.T) {
 	go func() {
 		done <- bus.Consume(consumeCtx, "workflow-integration-v1", "platform.workflow.instance.start-requested.v1", handler.Handle)
 	}()
-	payload := &workflowv1.InstanceStartRequestedEvent{Instance: &workflowv1.WorkflowInstance{Id: "instance-1", TenantId: "tenant-1", StarterId: "user-1", VariablesJson: `{}`}, Definition: &workflowv1.WorkflowDefinition{PublishedRevision: 2, Nodes: []*workflowv1.WorkflowNode{{Id: "start", Type: workflowv1.NodeType_NODE_TYPE_START}, {Id: "end", Type: workflowv1.NodeType_NODE_TYPE_END}}, Edges: []*workflowv1.WorkflowEdge{{FromNodeId: "start", ToNodeId: "end"}}}}
+	payload := &workflowv1.InstanceStartRequestedEvent{Instance: &workflowv1.WorkflowInstance{Id: "instance-1", TenantId: "tenant-1", ApplicationId: "app-1", StarterId: "user-1", VariablesJson: `{}`}, Definition: &workflowv1.WorkflowDefinition{PublishedRevision: 2, Nodes: []*workflowv1.WorkflowNode{{Id: "start", Type: workflowv1.NodeType_NODE_TYPE_START}, {Id: "end", Type: workflowv1.NodeType_NODE_TYPE_END}}, Edges: []*workflowv1.WorkflowEdge{{FromNodeId: "start", ToNodeId: "end"}}}}
 	envelope, err := platformeventbus.NewEnvelope(platformeventbus.Metadata{EventID: "event-1", EventType: "platform.workflow.instance.start-requested.v1", AggregateID: "instance-1", AggregateType: "workflow_instance", TenantID: "tenant-1", SchemaVersion: 1}, payload)
 	if err != nil {
 		t.Fatal(err)

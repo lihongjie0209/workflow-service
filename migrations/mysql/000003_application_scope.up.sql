@@ -1,20 +1,20 @@
-ALTER TABLE workflow_instances ADD COLUMN application_id VARCHAR(255) NULL AFTER tenant_id;
+ALTER TABLE workflow_instances ADD COLUMN application_id VARCHAR(36) NULL AFTER tenant_id;
 UPDATE workflow_instances i
 JOIN workflow_definitions d ON d.id = i.definition_id
 SET i.application_id = d.application_id;
-ALTER TABLE workflow_instances MODIFY COLUMN application_id VARCHAR(255) NOT NULL;
+ALTER TABLE workflow_instances MODIFY COLUMN application_id VARCHAR(36) NOT NULL;
 
-ALTER TABLE workflow_tasks ADD COLUMN application_id VARCHAR(255) NULL AFTER tenant_id;
+ALTER TABLE workflow_tasks ADD COLUMN application_id VARCHAR(36) NULL AFTER tenant_id;
 UPDATE workflow_tasks t
 JOIN workflow_instances i ON i.id = t.instance_id
 SET t.application_id = i.application_id;
-ALTER TABLE workflow_tasks MODIFY COLUMN application_id VARCHAR(255) NOT NULL;
+ALTER TABLE workflow_tasks MODIFY COLUMN application_id VARCHAR(36) NOT NULL;
 
-ALTER TABLE workflow_task_history ADD COLUMN application_id VARCHAR(255) NULL AFTER tenant_id;
+ALTER TABLE workflow_task_history ADD COLUMN application_id VARCHAR(36) NULL AFTER tenant_id;
 UPDATE workflow_task_history h
 JOIN workflow_tasks t ON t.id = h.task_id
 SET h.application_id = t.application_id;
-ALTER TABLE workflow_task_history MODIFY COLUMN application_id VARCHAR(255) NOT NULL;
+ALTER TABLE workflow_task_history MODIFY COLUMN application_id VARCHAR(36) NOT NULL;
 
 ALTER TABLE workflow_definitions
   DROP INDEX uq_workflow_definition_key,
