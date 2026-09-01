@@ -37,36 +37,36 @@ func NewFactory() *Factory {
 }
 
 func (f *Factory) DefinitionPublished(ctx context.Context, value workflow.Definition) (platformoutbox.Event, error) {
-	return f.build(ctx, DefinitionPublishedSubject, value.ID, "workflow_definition", value.TenantID,
+	return f.build(ctx, DefinitionPublishedSubject, value.ID, "workflow_definition", value.TenantID, value.ApplicationID,
 		&workflowv1.DefinitionPublishedEvent{Definition: definition(value)})
 }
 
 func (f *Factory) InstanceStartRequested(ctx context.Context, value workflow.Instance, definitionValue workflow.Definition) (platformoutbox.Event, error) {
-	return f.build(ctx, InstanceStartRequestedSubject, value.ID, "workflow_instance", value.TenantID,
+	return f.build(ctx, InstanceStartRequestedSubject, value.ID, "workflow_instance", value.TenantID, value.ApplicationID,
 		&workflowv1.InstanceStartRequestedEvent{Instance: instance(value), Definition: definition(definitionValue)})
 }
 
 func (f *Factory) InstanceCancellationRequested(ctx context.Context, value workflow.Instance, reason string) (platformoutbox.Event, error) {
-	return f.build(ctx, InstanceCancellationRequestedSubject, value.ID, "workflow_instance", value.TenantID,
+	return f.build(ctx, InstanceCancellationRequestedSubject, value.ID, "workflow_instance", value.TenantID, value.ApplicationID,
 		&workflowv1.InstanceCancellationRequestedEvent{Instance: instance(value), Reason: reason})
 }
 
 func (f *Factory) InstanceStatusChanged(ctx context.Context, value workflow.Instance, previousStatus string) (platformoutbox.Event, error) {
-	return f.build(ctx, "platform.workflow.instance.status-changed.v1", value.ID, "workflow_instance", value.TenantID,
+	return f.build(ctx, "platform.workflow.instance.status-changed.v1", value.ID, "workflow_instance", value.TenantID, value.ApplicationID,
 		&workflowv1.InstanceStatusChangedEvent{Instance: instance(value), PreviousStatus: instanceStatus(previousStatus)})
 }
 
 func (f *Factory) TaskCreated(ctx context.Context, value workflow.Task) (platformoutbox.Event, error) {
-	return f.build(ctx, "platform.workflow.task.created.v1", value.ID, "workflow_task", value.TenantID,
+	return f.build(ctx, "platform.workflow.task.created.v1", value.ID, "workflow_task", value.TenantID, value.ApplicationID,
 		&workflowv1.TaskCreatedEvent{Task: task(value)})
 }
 
 func (f *Factory) TaskCompleted(ctx context.Context, value workflow.Task) (platformoutbox.Event, error) {
-	return f.build(ctx, TaskCompletedSubject, value.ID, "workflow_task", value.TenantID,
+	return f.build(ctx, TaskCompletedSubject, value.ID, "workflow_task", value.TenantID, value.ApplicationID,
 		&workflowv1.TaskCompletedEvent{Task: task(value)})
 }
 
-func (f *Factory) build(ctx context.Context, subject, aggregateID, aggregateType, tenantID string, payload proto.Message) (platformoutbox.Event, error) {
+func (f *Factory) build(ctx context.Context, subject, aggregateID, aggregateType, tenantID, applicationID string, payload proto.Message) (platformoutbox.Event, error) {
 	principal, ok := platformprincipal.FromContext(ctx)
 	if !ok {
 		return platformoutbox.Event{}, errors.New("authenticated principal is required for workflow event")
@@ -75,7 +75,7 @@ func (f *Factory) build(ctx context.Context, subject, aggregateID, aggregateType
 	span := trace.SpanContextFromContext(ctx)
 	envelope, err := eventbus.NewEnvelope(eventbus.Metadata{
 		EventID: f.newID(), EventType: subject, AggregateID: aggregateID, AggregateType: aggregateType,
-		TenantID: tenantID, SchemaVersion: 1, RequestID: requestID, TraceID: span.TraceID().String(),
+		TenantID: tenantID, ApplicationID: applicationID, SchemaVersion: 1, RequestID: requestID, TraceID: span.TraceID().String(),
 		ActorID: principal.ID, ActorType: string(principal.Type), OccurredAt: f.now(),
 	}, payload)
 	if err != nil {
