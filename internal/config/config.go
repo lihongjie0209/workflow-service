@@ -276,6 +276,15 @@ func LoadWithProfile(path, explicitProfile string) (Config, error) {
 	if err := v.BindEnv("outbound.grpc.authorization.target", "APP_OUTBOUND_GRPC_AUTHORIZATION_TARGET"); err != nil {
 		return Config{}, fmt.Errorf("bind authorization target: %w", err)
 	}
+	if err := v.BindEnv("outbound.grpc.application.target", "APP_OUTBOUND_GRPC_APPLICATION_TARGET"); err != nil {
+		return Config{}, fmt.Errorf("bind application target: %w", err)
+	}
+	if err := v.BindEnv("outbound.grpc.application.auth.type", "APP_OUTBOUND_GRPC_APPLICATION_AUTH_TYPE"); err != nil {
+		return Config{}, fmt.Errorf("bind application auth type: %w", err)
+	}
+	if err := v.BindEnv("outbound.grpc.application.auth.token", "APP_OUTBOUND_GRPC_APPLICATION_AUTH_TOKEN"); err != nil {
+		return Config{}, fmt.Errorf("bind application auth token: %w", err)
+	}
 	setDefaults(v)
 	if err := v.ReadInConfig(); err != nil {
 		var notFound viper.ConfigFileNotFoundError
@@ -526,6 +535,11 @@ func (c Config) Validate() error {
 	if c.Authorization.Enabled {
 		if _, ok := c.Outbound.GRPC["authorization"]; !ok {
 			return errors.New("enabled authorization requires outbound.grpc.authorization")
+		}
+	}
+	if c.Database.Enabled {
+		if _, ok := c.Outbound.GRPC["application"]; !ok {
+			return errors.New("enabled workflow database requires outbound.grpc.application")
 		}
 	}
 	if (c.Auth.ClientID != "" || c.Auth.ClientSecret != "") && len(c.JWT.Secret) < 32 {

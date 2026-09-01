@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/lihongjie0209/microservice-platform-go/appaccess"
 	commonv1 "github.com/lihongjie0209/platform-protos/gen/go/platform/common/v1"
 	workflowv1 "github.com/lihongjie0209/platform-protos/gen/go/platform/workflow/v1"
 	"github.com/lihongjie0209/workflow-service/internal/workflow"
@@ -39,7 +40,7 @@ func (s *workflowServer) UpdateDefinition(ctx context.Context, request *workflow
 }
 
 func (s *workflowServer) PublishDefinition(ctx context.Context, request *workflowv1.PublishDefinitionRequest) (*workflowv1.PublishDefinitionResponse, error) {
-	value, err := s.service.PublishDefinition(ctx, request.GetTenantId(), request.GetId(), request.GetExpectedVersion())
+	value, err := s.service.PublishDefinition(ctx, request.GetTenantId(), request.GetApplicationId(), request.GetId(), request.GetExpectedVersion())
 	if err != nil {
 		return nil, grpcError(err)
 	}
@@ -47,7 +48,7 @@ func (s *workflowServer) PublishDefinition(ctx context.Context, request *workflo
 }
 
 func (s *workflowServer) DisableDefinition(ctx context.Context, request *workflowv1.DisableDefinitionRequest) (*workflowv1.DisableDefinitionResponse, error) {
-	value, err := s.service.DisableDefinition(ctx, request.GetTenantId(), request.GetId(), request.GetExpectedVersion())
+	value, err := s.service.DisableDefinition(ctx, request.GetTenantId(), request.GetApplicationId(), request.GetId(), request.GetExpectedVersion())
 	if err != nil {
 		return nil, grpcError(err)
 	}
@@ -55,7 +56,7 @@ func (s *workflowServer) DisableDefinition(ctx context.Context, request *workflo
 }
 
 func (s *workflowServer) GetDefinition(ctx context.Context, request *workflowv1.GetDefinitionRequest) (*workflowv1.GetDefinitionResponse, error) {
-	value, err := s.service.GetDefinition(ctx, request.GetTenantId(), request.GetId(), request.GetRevision())
+	value, err := s.service.GetDefinition(ctx, request.GetTenantId(), request.GetApplicationId(), request.GetId(), request.GetRevision())
 	if err != nil {
 		return nil, grpcError(err)
 	}
@@ -76,7 +77,7 @@ func (s *workflowServer) ListDefinitions(ctx context.Context, request *workflowv
 }
 
 func (s *workflowServer) StartInstance(ctx context.Context, request *workflowv1.StartInstanceRequest) (*workflowv1.StartInstanceResponse, error) {
-	value, err := s.service.StartInstance(ctx, workflow.StartInstanceInput{TenantID: request.GetTenantId(), DefinitionKey: request.GetDefinitionKey(), BusinessKey: request.GetBusinessKey(), Title: request.GetTitle(), VariablesJSON: request.GetVariablesJson(), IdempotencyKey: request.GetIdempotencyKey()})
+	value, err := s.service.StartInstance(ctx, workflow.StartInstanceInput{TenantID: request.GetTenantId(), ApplicationID: request.GetApplicationId(), DefinitionKey: request.GetDefinitionKey(), BusinessKey: request.GetBusinessKey(), Title: request.GetTitle(), VariablesJSON: request.GetVariablesJson(), IdempotencyKey: request.GetIdempotencyKey()})
 	if err != nil {
 		return nil, grpcError(err)
 	}
@@ -84,7 +85,7 @@ func (s *workflowServer) StartInstance(ctx context.Context, request *workflowv1.
 }
 
 func (s *workflowServer) CancelInstance(ctx context.Context, request *workflowv1.CancelInstanceRequest) (*workflowv1.CancelInstanceResponse, error) {
-	value, err := s.service.CancelInstance(ctx, request.GetTenantId(), request.GetId(), request.GetReason(), request.GetExpectedVersion())
+	value, err := s.service.CancelInstance(ctx, request.GetTenantId(), request.GetApplicationId(), request.GetId(), request.GetReason(), request.GetExpectedVersion())
 	if err != nil {
 		return nil, grpcError(err)
 	}
@@ -92,7 +93,7 @@ func (s *workflowServer) CancelInstance(ctx context.Context, request *workflowv1
 }
 
 func (s *workflowServer) GetInstance(ctx context.Context, request *workflowv1.GetInstanceRequest) (*workflowv1.GetInstanceResponse, error) {
-	value, err := s.service.GetInstance(ctx, request.GetTenantId(), request.GetId())
+	value, err := s.service.GetInstance(ctx, request.GetTenantId(), request.GetApplicationId(), request.GetId())
 	if err != nil {
 		return nil, grpcError(err)
 	}
@@ -101,7 +102,7 @@ func (s *workflowServer) GetInstance(ctx context.Context, request *workflowv1.Ge
 
 func (s *workflowServer) ListInstances(ctx context.Context, request *workflowv1.ListInstancesRequest) (*workflowv1.ListInstancesResponse, error) {
 	page, size := pageFromProto(request.GetPage())
-	values, err := s.service.ListInstances(ctx, workflow.InstanceFilter{TenantID: request.GetTenantId(), DefinitionID: request.GetDefinitionId(), Status: instanceStatusFromProto(request.GetStatus()), StarterID: request.GetStarterId(), Search: request.GetSearch(), StartedFrom: timeFromProto(request.GetStartedFrom()), StartedUntil: timeFromProto(request.GetStartedUntil()), Page: page, PageSize: size})
+	values, err := s.service.ListInstances(ctx, workflow.InstanceFilter{TenantID: request.GetTenantId(), ApplicationID: request.GetApplicationId(), DefinitionID: request.GetDefinitionId(), Status: instanceStatusFromProto(request.GetStatus()), StarterID: request.GetStarterId(), Search: request.GetSearch(), StartedFrom: timeFromProto(request.GetStartedFrom()), StartedUntil: timeFromProto(request.GetStartedUntil()), Page: page, PageSize: size})
 	if err != nil {
 		return nil, grpcError(err)
 	}
@@ -113,7 +114,7 @@ func (s *workflowServer) ListInstances(ctx context.Context, request *workflowv1.
 }
 
 func (s *workflowServer) ClaimTask(ctx context.Context, request *workflowv1.ClaimTaskRequest) (*workflowv1.ClaimTaskResponse, error) {
-	value, err := s.service.ClaimTask(ctx, request.GetTenantId(), request.GetId(), request.GetExpectedVersion())
+	value, err := s.service.ClaimTask(ctx, request.GetTenantId(), request.GetApplicationId(), request.GetId(), request.GetExpectedVersion())
 	if err != nil {
 		return nil, grpcError(err)
 	}
@@ -121,7 +122,7 @@ func (s *workflowServer) ClaimTask(ctx context.Context, request *workflowv1.Clai
 }
 
 func (s *workflowServer) CompleteTask(ctx context.Context, request *workflowv1.CompleteTaskRequest) (*workflowv1.CompleteTaskResponse, error) {
-	task, instance, err := s.service.CompleteTask(ctx, request.GetTenantId(), request.GetId(), decisionFromProto(request.GetDecision()), request.GetComment(), request.GetOutputJson(), request.GetExpectedVersion())
+	task, instance, err := s.service.CompleteTask(ctx, request.GetTenantId(), request.GetApplicationId(), request.GetId(), decisionFromProto(request.GetDecision()), request.GetComment(), request.GetOutputJson(), request.GetExpectedVersion())
 	if err != nil {
 		return nil, grpcError(err)
 	}
@@ -129,7 +130,7 @@ func (s *workflowServer) CompleteTask(ctx context.Context, request *workflowv1.C
 }
 
 func (s *workflowServer) DelegateTask(ctx context.Context, request *workflowv1.DelegateTaskRequest) (*workflowv1.DelegateTaskResponse, error) {
-	value, err := s.service.DelegateTask(ctx, request.GetTenantId(), request.GetId(), request.GetDelegateTo(), request.GetReason(), request.GetExpectedVersion())
+	value, err := s.service.DelegateTask(ctx, request.GetTenantId(), request.GetApplicationId(), request.GetId(), request.GetDelegateTo(), request.GetReason(), request.GetExpectedVersion())
 	if err != nil {
 		return nil, grpcError(err)
 	}
@@ -137,7 +138,7 @@ func (s *workflowServer) DelegateTask(ctx context.Context, request *workflowv1.D
 }
 
 func (s *workflowServer) GetTask(ctx context.Context, request *workflowv1.GetTaskRequest) (*workflowv1.GetTaskResponse, error) {
-	value, err := s.service.GetTask(ctx, request.GetTenantId(), request.GetId())
+	value, err := s.service.GetTask(ctx, request.GetTenantId(), request.GetApplicationId(), request.GetId())
 	if err != nil {
 		return nil, grpcError(err)
 	}
@@ -148,7 +149,7 @@ func (s *workflowServer) ListTasks(ctx context.Context, request *workflowv1.List
 	page, size := pageFromProto(request.GetPage())
 	// role_ids/include_unclaimed are intentionally ignored. The service derives
 	// assignments from the authenticated membership through authorization.
-	values, err := s.service.ListMyTasks(ctx, workflow.TaskFilter{TenantID: request.GetTenantId(), InstanceID: request.GetInstanceId(), Status: taskStatusFromProto(request.GetStatus()), Search: request.GetSearch(), Page: page, PageSize: size})
+	values, err := s.service.ListMyTasks(ctx, workflow.TaskFilter{TenantID: request.GetTenantId(), ApplicationID: request.GetApplicationId(), InstanceID: request.GetInstanceId(), Status: taskStatusFromProto(request.GetStatus()), Search: request.GetSearch(), Page: page, PageSize: size})
 	if err != nil {
 		return nil, grpcError(err)
 	}
@@ -175,6 +176,8 @@ func grpcError(err error) error {
 		return status.Error(codes.Aborted, "workflow resource version conflict")
 	case errors.Is(err, workflow.ErrConflict):
 		return status.Error(codes.FailedPrecondition, "workflow resource state conflict")
+	case errors.Is(err, appaccess.ErrUnavailable):
+		return status.Error(codes.Unavailable, "application authorization is unavailable")
 	default:
 		return status.Error(codes.Internal, "internal server error")
 	}
@@ -234,10 +237,10 @@ func definitionToProto(value workflow.Definition) *workflowv1.WorkflowDefinition
 	return &workflowv1.WorkflowDefinition{Id: value.ID, TenantId: value.TenantID, ApplicationId: value.ApplicationID, Key: value.Key, Name: value.Name, Description: value.Description, Status: definitionStatusToProto(value.Status), PublishedRevision: value.PublishedRevision, Nodes: nodes, Edges: edges, Version: value.Version, CreatedAt: timestamppb.New(value.CreatedAt), UpdatedAt: timestamppb.New(value.UpdatedAt), CreatedBy: value.CreatedBy, UpdatedBy: value.UpdatedBy}
 }
 func instanceToProto(value workflow.Instance) *workflowv1.WorkflowInstance {
-	return &workflowv1.WorkflowInstance{Id: value.ID, TenantId: value.TenantID, DefinitionId: value.DefinitionID, DefinitionRevision: value.DefinitionRevision, BusinessKey: value.BusinessKey, Title: value.Title, StarterId: value.StarterID, Status: instanceStatusToProto(value.Status), CurrentNodeId: value.CurrentNodeID, VariablesJson: value.VariablesJSON, ResultJson: value.ResultJSON, ErrorCode: value.ErrorCode, ErrorMessage: value.ErrorMessage, StartedAt: timestamppb.New(value.StartedAt), FinishedAt: optionalTimestamp(value.FinishedAt), Version: value.Version, CreatedAt: timestamppb.New(value.CreatedAt), UpdatedAt: timestamppb.New(value.UpdatedAt), CreatedBy: value.CreatedBy, UpdatedBy: value.UpdatedBy}
+	return &workflowv1.WorkflowInstance{Id: value.ID, TenantId: value.TenantID, ApplicationId: value.ApplicationID, DefinitionId: value.DefinitionID, DefinitionRevision: value.DefinitionRevision, BusinessKey: value.BusinessKey, Title: value.Title, StarterId: value.StarterID, Status: instanceStatusToProto(value.Status), CurrentNodeId: value.CurrentNodeID, VariablesJson: value.VariablesJSON, ResultJson: value.ResultJSON, ErrorCode: value.ErrorCode, ErrorMessage: value.ErrorMessage, StartedAt: timestamppb.New(value.StartedAt), FinishedAt: optionalTimestamp(value.FinishedAt), Version: value.Version, CreatedAt: timestamppb.New(value.CreatedAt), UpdatedAt: timestamppb.New(value.UpdatedAt), CreatedBy: value.CreatedBy, UpdatedBy: value.UpdatedBy}
 }
 func taskToProto(value workflow.Task) *workflowv1.WorkflowTask {
-	return &workflowv1.WorkflowTask{Id: value.ID, TenantId: value.TenantID, InstanceId: value.InstanceID, NodeId: value.NodeID, Name: value.Name, AssigneeType: assigneeTypeToProto(value.AssigneeType), Assignee: value.Assignee, ClaimedBy: value.ClaimedBy, Status: taskStatusToProto(value.Status), Decision: decisionToProto(value.Decision), Comment: value.Comment, InputJson: value.InputJSON, OutputJson: value.OutputJSON, DueAt: optionalTimestamp(value.DueAt), CompletedAt: optionalTimestamp(value.CompletedAt), Version: value.Version, CreatedAt: timestamppb.New(value.CreatedAt), UpdatedAt: timestamppb.New(value.UpdatedAt), CreatedBy: value.CreatedBy, UpdatedBy: value.UpdatedBy}
+	return &workflowv1.WorkflowTask{Id: value.ID, TenantId: value.TenantID, ApplicationId: value.ApplicationID, InstanceId: value.InstanceID, NodeId: value.NodeID, Name: value.Name, AssigneeType: assigneeTypeToProto(value.AssigneeType), Assignee: value.Assignee, ClaimedBy: value.ClaimedBy, Status: taskStatusToProto(value.Status), Decision: decisionToProto(value.Decision), Comment: value.Comment, InputJson: value.InputJSON, OutputJson: value.OutputJSON, DueAt: optionalTimestamp(value.DueAt), CompletedAt: optionalTimestamp(value.CompletedAt), Version: value.Version, CreatedAt: timestamppb.New(value.CreatedAt), UpdatedAt: timestamppb.New(value.UpdatedAt), CreatedBy: value.CreatedBy, UpdatedBy: value.UpdatedBy}
 }
 
 func definitionStatusFromProto(value workflowv1.DefinitionStatus) string {

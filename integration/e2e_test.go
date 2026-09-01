@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	applicationv1 "github.com/lihongjie0209/platform-protos/gen/go/platform/application/v1"
 	authorizationv1 "github.com/lihongjie0209/platform-protos/gen/go/platform/authorization/v1"
 	workflowv1 "github.com/lihongjie0209/platform-protos/gen/go/platform/workflow/v1"
 	"github.com/lihongjie0209/workflow-service/internal/app"
@@ -51,6 +52,15 @@ func TestHTTPJWTAndGRPCWorkflowEndToEnd(t *testing.T) {
 	authorizationv1.RegisterAuthorizationServiceServer(authorizationServer, &authorizationStub{})
 	go func() { _ = authorizationServer.Serve(authorizationListener) }()
 	t.Cleanup(authorizationServer.Stop)
+	applicationAddress := freeAddress(t)
+	applicationListener, err := net.Listen("tcp", applicationAddress)
+	if err != nil {
+		t.Fatal(err)
+	}
+	applicationServer := grpc.NewServer()
+	applicationv1.RegisterApplicationServiceServer(applicationServer, &applicationStub{})
+	go func() { _ = applicationServer.Serve(applicationListener) }()
+	t.Cleanup(applicationServer.Stop)
 
 	httpAddress, grpcAddress := freeAddress(t), freeAddress(t)
 	const secret = "01234567890123456789012345678901"
@@ -63,7 +73,10 @@ func TestHTTPJWTAndGRPCWorkflowEndToEnd(t *testing.T) {
 		Migration: config.Migration{AutoUp: true, CreateSchema: true, Path: migrationPath, DatabaseURL: dsn, Table: "workflow_e2e_schema_migrations", Schema: "workflow_e2e", DatabaseName: "app"},
 		Health:    config.Health{DatabaseTimeout: 2 * time.Second, RedisTimeout: 2 * time.Second}, Observability: config.Observability{MetricsEnabled: false},
 		JWT: config.JWT{Issuer: "integration", Secret: secret, TTL: time.Hour}, Auth: config.Auth{ClientID: "client", ClientSecret: "secret", SkipHTTPPaths: []string{"/api/v1/version"}, SkipGRPCMethods: []string{"/grpc.health.v1.Health/*"}, PSK: config.PSK{Enabled: true, Key: secret, HTTPPaths: []string{"/api/v1/workflow/definitions/get"}, GRPCMethods: []string{"/platform.workflow.v1.WorkflowService/GetDefinition"}}},
-		Outbound: config.Outbound{GRPC: map[string]config.GRPCUpstream{"authorization": {Target: authorizationAddress, Timeout: 5 * time.Second, Retry: config.Retry{MaxAttempts: 1, InitialBackoff: 10 * time.Millisecond, MaxBackoff: time.Second}}}},
+		Outbound: config.Outbound{GRPC: map[string]config.GRPCUpstream{
+			"authorization": {Target: authorizationAddress, Timeout: 5 * time.Second, Retry: config.Retry{MaxAttempts: 1, InitialBackoff: 10 * time.Millisecond, MaxBackoff: time.Second}},
+			"application":   {Target: applicationAddress, Timeout: 5 * time.Second, Retry: config.Retry{MaxAttempts: 1, InitialBackoff: 10 * time.Millisecond, MaxBackoff: time.Second}},
+		}},
 	}
 	application := app.New(cfg)
 	if err := application.Start(ctx); err != nil {
@@ -90,12 +103,12 @@ func TestHTTPJWTAndGRPCWorkflowEndToEnd(t *testing.T) {
 	if createResponse["code"].(float64) != 0 || definitionID == "" {
 		t.Fatalf("create response = %#v", createResponse)
 	}
-	postJSONBody(t, baseURL+"/api/v1/workflow/definitions/publish", "Bearer "+token, `{"tenant_id":"tenant-1","id":"`+definitionID+`","expected_version":1}`)
-	pskDefinition := postJSONBody(t, baseURL+"/api/v1/workflow/definitions/get", "PSK "+secret, `{"tenant_id":"tenant-1","id":"`+definitionID+`"}`)
+	postJSONBody(t, baseURL+"/api/v1/workflow/definitions/publish", "Bearer "+token, `{"tenant_id":"tenant-1","application_id":"app-1","id":"`+definitionID+`","expected_version":1}`)
+	pskDefinition := postJSONBody(t, baseURL+"/api/v1/workflow/definitions/get", "PSK "+secret, `{"tenant_id":"tenant-1","application_id":"app-1","id":"`+definitionID+`"}`)
 	if pskDefinition["code"].(float64) != 0 {
 		t.Fatalf("PSK definition response = %#v", pskDefinition)
 	}
-	startResponse := postJSONBody(t, baseURL+"/api/v1/workflow/instances/start", "Bearer "+token, `{"tenant_id":"tenant-1","definition_key":"leave.approval","business_key":"leave-1","title":"Leave","variables_json":"{}","idempotency_key":"request-0001"}`)
+	startResponse := postJSONBody(t, baseURL+"/api/v1/workflow/instances/start", "Bearer "+token, `{"tenant_id":"tenant-1","application_id":"app-1","definition_key":"leave.approval","business_key":"leave-1","title":"Leave","variables_json":"{}","idempotency_key":"request-0001"}`)
 	if startResponse["code"].(float64) != 0 {
 		t.Fatalf("start response = %#v", startResponse)
 	}
@@ -110,7 +123,7 @@ func TestHTTPJWTAndGRPCWorkflowEndToEnd(t *testing.T) {
 		t.Fatalf("health = %#v, %v", healthResponse, err)
 	}
 	grpcCtx := metadata.AppendToOutgoingContext(ctx, "authorization", "PSK "+secret)
-	definitionResponse, err := workflowv1.NewWorkflowServiceClient(connection).GetDefinition(grpcCtx, &workflowv1.GetDefinitionRequest{TenantId: "tenant-1", Id: definitionID})
+	definitionResponse, err := workflowv1.NewWorkflowServiceClient(connection).GetDefinition(grpcCtx, &workflowv1.GetDefinitionRequest{TenantId: "tenant-1", ApplicationId: "app-1", Id: definitionID})
 	if err != nil || definitionResponse.GetDefinition().GetPublishedRevision() != 1 {
 		t.Fatalf("GetDefinition = %#v, %v", definitionResponse, err)
 	}
@@ -118,6 +131,18 @@ func TestHTTPJWTAndGRPCWorkflowEndToEnd(t *testing.T) {
 
 type authorizationStub struct {
 	authorizationv1.UnimplementedAuthorizationServiceServer
+}
+
+type applicationStub struct {
+	applicationv1.UnimplementedApplicationServiceServer
+}
+
+func (*applicationStub) BatchCheckTenantApplications(_ context.Context, request *applicationv1.BatchCheckTenantApplicationsRequest) (*applicationv1.BatchCheckTenantApplicationsResponse, error) {
+	decisions := make([]*applicationv1.TenantApplicationDecision, 0, len(request.GetApplicationIds()))
+	for _, applicationID := range request.GetApplicationIds() {
+		decisions = append(decisions, &applicationv1.TenantApplicationDecision{ApplicationId: applicationID, Granted: true})
+	}
+	return &applicationv1.BatchCheckTenantApplicationsResponse{Decisions: decisions}, nil
 }
 
 func (*authorizationStub) ListBindings(context.Context, *authorizationv1.ListBindingsRequest) (*authorizationv1.ListBindingsResponse, error) {

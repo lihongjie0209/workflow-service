@@ -15,7 +15,7 @@ func TestCommandHandlerStartsPinnedWorkflow(t *testing.T) {
 	commands := new(fakeTemporalCommands)
 	handler := newCommandHandler(commands, "workflow-service")
 	payload := &workflowv1.InstanceStartRequestedEvent{
-		Instance:   &workflowv1.WorkflowInstance{Id: "instance-1", TenantId: "tenant-1", StarterId: "user-1", VariablesJson: "{}"},
+		Instance:   &workflowv1.WorkflowInstance{Id: "instance-1", TenantId: "tenant-1", ApplicationId: "app-1", StarterId: "user-1", VariablesJson: "{}"},
 		Definition: &workflowv1.WorkflowDefinition{PublishedRevision: 3, Nodes: []*workflowv1.WorkflowNode{{Id: "start", Type: workflowv1.NodeType_NODE_TYPE_START}, {Id: "end", Type: workflowv1.NodeType_NODE_TYPE_END}}, Edges: []*workflowv1.WorkflowEdge{{FromNodeId: "start", ToNodeId: "end"}}},
 	}
 	envelope, err := eventbus.NewEnvelope(eventbus.Metadata{EventID: "event-1", EventType: "platform.workflow.instance.start-requested.v1", AggregateID: "instance-1", AggregateType: "workflow_instance", SchemaVersion: 1}, payload)

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/lihongjie0209/microservice-platform-go/appaccess"
 	"github.com/lihongjie0209/workflow-service/internal/apperror"
 	"github.com/lihongjie0209/workflow-service/internal/workflow"
 )
@@ -51,6 +52,7 @@ type DefinitionDTO struct {
 type InstanceDTO struct {
 	ID                 string          `json:"id"`
 	TenantID           string          `json:"tenant_id"`
+	ApplicationID      string          `json:"application_id"`
 	DefinitionID       string          `json:"definition_id"`
 	DefinitionRevision uint32          `json:"definition_revision"`
 	BusinessKey        string          `json:"business_key"`
@@ -71,26 +73,27 @@ type InstanceDTO struct {
 	UpdatedBy          string          `json:"updated_by"`
 }
 type TaskDTO struct {
-	ID           string          `json:"id"`
-	TenantID     string          `json:"tenant_id"`
-	InstanceID   string          `json:"instance_id"`
-	NodeID       string          `json:"node_id"`
-	Name         string          `json:"name"`
-	AssigneeType string          `json:"assignee_type"`
-	Assignee     string          `json:"assignee"`
-	ClaimedBy    string          `json:"claimed_by"`
-	Status       string          `json:"status"`
-	Decision     string          `json:"decision"`
-	Comment      string          `json:"comment"`
-	InputJSON    json.RawMessage `json:"input_json" swaggertype:"object"`
-	OutputJSON   json.RawMessage `json:"output_json" swaggertype:"object"`
-	DueAt        *time.Time      `json:"due_at,omitempty"`
-	CompletedAt  *time.Time      `json:"completed_at,omitempty"`
-	Version      int64           `json:"version"`
-	CreatedAt    time.Time       `json:"created_at"`
-	UpdatedAt    time.Time       `json:"updated_at"`
-	CreatedBy    string          `json:"created_by"`
-	UpdatedBy    string          `json:"updated_by"`
+	ID            string          `json:"id"`
+	TenantID      string          `json:"tenant_id"`
+	ApplicationID string          `json:"application_id"`
+	InstanceID    string          `json:"instance_id"`
+	NodeID        string          `json:"node_id"`
+	Name          string          `json:"name"`
+	AssigneeType  string          `json:"assignee_type"`
+	Assignee      string          `json:"assignee"`
+	ClaimedBy     string          `json:"claimed_by"`
+	Status        string          `json:"status"`
+	Decision      string          `json:"decision"`
+	Comment       string          `json:"comment"`
+	InputJSON     json.RawMessage `json:"input_json" swaggertype:"object"`
+	OutputJSON    json.RawMessage `json:"output_json" swaggertype:"object"`
+	DueAt         *time.Time      `json:"due_at,omitempty"`
+	CompletedAt   *time.Time      `json:"completed_at,omitempty"`
+	Version       int64           `json:"version"`
+	CreatedAt     time.Time       `json:"created_at"`
+	UpdatedAt     time.Time       `json:"updated_at"`
+	CreatedBy     string          `json:"created_by"`
+	UpdatedBy     string          `json:"updated_by"`
 }
 type PageDTO[T any] struct {
 	Items    []T   `json:"items"`
@@ -121,12 +124,14 @@ type UpdateDefinitionRequest struct {
 type VersionedDefinitionRequest struct {
 	ID              string `json:"id" binding:"required"`
 	TenantID        string `json:"tenant_id" binding:"required"`
+	ApplicationID   string `json:"application_id" binding:"required"`
 	ExpectedVersion int64  `json:"expected_version" binding:"required"`
 }
 type GetDefinitionRequest struct {
-	ID       string `json:"id" binding:"required"`
-	TenantID string `json:"tenant_id" binding:"required"`
-	Revision uint32 `json:"revision"`
+	ID            string `json:"id" binding:"required"`
+	TenantID      string `json:"tenant_id" binding:"required"`
+	ApplicationID string `json:"application_id" binding:"required"`
+	Revision      uint32 `json:"revision"`
 }
 type ListDefinitionsRequest struct {
 	TenantID      string `json:"tenant_id" binding:"required"`
@@ -138,6 +143,7 @@ type ListDefinitionsRequest struct {
 }
 type StartInstanceRequest struct {
 	TenantID       string          `json:"tenant_id" binding:"required"`
+	ApplicationID  string          `json:"application_id" binding:"required"`
 	DefinitionKey  string          `json:"definition_key" binding:"required"`
 	BusinessKey    string          `json:"business_key" binding:"required"`
 	Title          string          `json:"title" binding:"required"`
@@ -147,32 +153,37 @@ type StartInstanceRequest struct {
 type CancelInstanceRequest struct {
 	ID              string `json:"id" binding:"required"`
 	TenantID        string `json:"tenant_id" binding:"required"`
+	ApplicationID   string `json:"application_id" binding:"required"`
 	Reason          string `json:"reason" binding:"required"`
 	ExpectedVersion int64  `json:"expected_version" binding:"required"`
 }
 type GetInstanceRequest struct {
-	ID       string `json:"id" binding:"required"`
-	TenantID string `json:"tenant_id" binding:"required"`
+	ID            string `json:"id" binding:"required"`
+	TenantID      string `json:"tenant_id" binding:"required"`
+	ApplicationID string `json:"application_id" binding:"required"`
 }
 type ListInstancesRequest struct {
-	TenantID     string     `json:"tenant_id" binding:"required"`
-	DefinitionID string     `json:"definition_id"`
-	Status       string     `json:"status"`
-	StarterID    string     `json:"starter_id"`
-	Search       string     `json:"search"`
-	StartedFrom  *time.Time `json:"started_from"`
-	StartedUntil *time.Time `json:"started_until"`
-	Page         int        `json:"page"`
-	PageSize     int        `json:"page_size"`
+	TenantID      string     `json:"tenant_id" binding:"required"`
+	ApplicationID string     `json:"application_id" binding:"required"`
+	DefinitionID  string     `json:"definition_id"`
+	Status        string     `json:"status"`
+	StarterID     string     `json:"starter_id"`
+	Search        string     `json:"search"`
+	StartedFrom   *time.Time `json:"started_from"`
+	StartedUntil  *time.Time `json:"started_until"`
+	Page          int        `json:"page"`
+	PageSize      int        `json:"page_size"`
 }
 type TaskVersionRequest struct {
 	ID              string `json:"id" binding:"required"`
 	TenantID        string `json:"tenant_id" binding:"required"`
+	ApplicationID   string `json:"application_id" binding:"required"`
 	ExpectedVersion int64  `json:"expected_version" binding:"required"`
 }
 type CompleteTaskRequest struct {
 	ID              string          `json:"id" binding:"required"`
 	TenantID        string          `json:"tenant_id" binding:"required"`
+	ApplicationID   string          `json:"application_id" binding:"required"`
 	Decision        string          `json:"decision" binding:"required"`
 	Comment         string          `json:"comment"`
 	OutputJSON      json.RawMessage `json:"output_json" swaggertype:"object"`
@@ -181,21 +192,24 @@ type CompleteTaskRequest struct {
 type DelegateTaskRequest struct {
 	ID              string `json:"id" binding:"required"`
 	TenantID        string `json:"tenant_id" binding:"required"`
+	ApplicationID   string `json:"application_id" binding:"required"`
 	DelegateTo      string `json:"delegate_to" binding:"required"`
 	Reason          string `json:"reason" binding:"required"`
 	ExpectedVersion int64  `json:"expected_version" binding:"required"`
 }
 type GetTaskRequest struct {
-	ID       string `json:"id" binding:"required"`
-	TenantID string `json:"tenant_id" binding:"required"`
+	ID            string `json:"id" binding:"required"`
+	TenantID      string `json:"tenant_id" binding:"required"`
+	ApplicationID string `json:"application_id" binding:"required"`
 }
 type ListTasksRequest struct {
-	TenantID   string `json:"tenant_id" binding:"required"`
-	InstanceID string `json:"instance_id"`
-	Status     string `json:"status"`
-	Search     string `json:"search"`
-	Page       int    `json:"page"`
-	PageSize   int    `json:"page_size"`
+	TenantID      string `json:"tenant_id" binding:"required"`
+	ApplicationID string `json:"application_id" binding:"required"`
+	InstanceID    string `json:"instance_id"`
+	Status        string `json:"status"`
+	Search        string `json:"search"`
+	Page          int    `json:"page"`
+	PageSize      int    `json:"page_size"`
 }
 
 // CreateDefinition godoc
@@ -251,7 +265,7 @@ func (h *Handler) PublishDefinition(c *gin.Context) {
 	if !bind(c, h, &request) {
 		return
 	}
-	value, err := h.workflow.PublishDefinition(c.Request.Context(), request.TenantID, request.ID, request.ExpectedVersion)
+	value, err := h.workflow.PublishDefinition(c.Request.Context(), request.TenantID, request.ApplicationID, request.ID, request.ExpectedVersion)
 	respond(c, h, definitionDTO(value), err)
 }
 
@@ -270,7 +284,7 @@ func (h *Handler) DisableDefinition(c *gin.Context) {
 	if !bind(c, h, &request) {
 		return
 	}
-	value, err := h.workflow.DisableDefinition(c.Request.Context(), request.TenantID, request.ID, request.ExpectedVersion)
+	value, err := h.workflow.DisableDefinition(c.Request.Context(), request.TenantID, request.ApplicationID, request.ID, request.ExpectedVersion)
 	respond(c, h, definitionDTO(value), err)
 }
 
@@ -289,7 +303,7 @@ func (h *Handler) GetDefinition(c *gin.Context) {
 	if !bind(c, h, &request) {
 		return
 	}
-	value, err := h.workflow.GetDefinition(c.Request.Context(), request.TenantID, request.ID, request.Revision)
+	value, err := h.workflow.GetDefinition(c.Request.Context(), request.TenantID, request.ApplicationID, request.ID, request.Revision)
 	respond(c, h, definitionDTO(value), err)
 }
 
@@ -331,7 +345,7 @@ func (h *Handler) StartInstance(c *gin.Context) {
 	if !bind(c, h, &request) {
 		return
 	}
-	value, err := h.workflow.StartInstance(c.Request.Context(), workflow.StartInstanceInput{TenantID: request.TenantID, DefinitionKey: request.DefinitionKey, BusinessKey: request.BusinessKey, Title: request.Title, VariablesJSON: string(rawObject(request.VariablesJSON)), IdempotencyKey: request.IdempotencyKey})
+	value, err := h.workflow.StartInstance(c.Request.Context(), workflow.StartInstanceInput{TenantID: request.TenantID, ApplicationID: request.ApplicationID, DefinitionKey: request.DefinitionKey, BusinessKey: request.BusinessKey, Title: request.Title, VariablesJSON: string(rawObject(request.VariablesJSON)), IdempotencyKey: request.IdempotencyKey})
 	respond(c, h, instanceDTO(value), err)
 }
 
@@ -350,7 +364,7 @@ func (h *Handler) CancelInstance(c *gin.Context) {
 	if !bind(c, h, &request) {
 		return
 	}
-	value, err := h.workflow.CancelInstance(c.Request.Context(), request.TenantID, request.ID, request.Reason, request.ExpectedVersion)
+	value, err := h.workflow.CancelInstance(c.Request.Context(), request.TenantID, request.ApplicationID, request.ID, request.Reason, request.ExpectedVersion)
 	respond(c, h, instanceDTO(value), err)
 }
 
@@ -369,7 +383,7 @@ func (h *Handler) GetInstance(c *gin.Context) {
 	if !bind(c, h, &request) {
 		return
 	}
-	value, err := h.workflow.GetInstance(c.Request.Context(), request.TenantID, request.ID)
+	value, err := h.workflow.GetInstance(c.Request.Context(), request.TenantID, request.ApplicationID, request.ID)
 	respond(c, h, instanceDTO(value), err)
 }
 
@@ -388,7 +402,7 @@ func (h *Handler) ListInstances(c *gin.Context) {
 	if !bind(c, h, &request) {
 		return
 	}
-	value, err := h.workflow.ListInstances(c.Request.Context(), workflow.InstanceFilter{TenantID: request.TenantID, DefinitionID: request.DefinitionID, Status: request.Status, StarterID: request.StarterID, Search: request.Search, StartedFrom: request.StartedFrom, StartedUntil: request.StartedUntil, Page: request.Page, PageSize: request.PageSize})
+	value, err := h.workflow.ListInstances(c.Request.Context(), workflow.InstanceFilter{TenantID: request.TenantID, ApplicationID: request.ApplicationID, DefinitionID: request.DefinitionID, Status: request.Status, StarterID: request.StarterID, Search: request.Search, StartedFrom: request.StartedFrom, StartedUntil: request.StartedUntil, Page: request.Page, PageSize: request.PageSize})
 	items := make([]InstanceDTO, 0, len(value.Items))
 	for _, item := range value.Items {
 		items = append(items, instanceDTO(item))
@@ -411,7 +425,7 @@ func (h *Handler) ClaimTask(c *gin.Context) {
 	if !bind(c, h, &request) {
 		return
 	}
-	value, err := h.workflow.ClaimTask(c.Request.Context(), request.TenantID, request.ID, request.ExpectedVersion)
+	value, err := h.workflow.ClaimTask(c.Request.Context(), request.TenantID, request.ApplicationID, request.ID, request.ExpectedVersion)
 	respond(c, h, taskDTO(value), err)
 }
 
@@ -430,7 +444,7 @@ func (h *Handler) CompleteTask(c *gin.Context) {
 	if !bind(c, h, &request) {
 		return
 	}
-	task, instance, err := h.workflow.CompleteTask(c.Request.Context(), request.TenantID, request.ID, request.Decision, request.Comment, string(rawObject(request.OutputJSON)), request.ExpectedVersion)
+	task, instance, err := h.workflow.CompleteTask(c.Request.Context(), request.TenantID, request.ApplicationID, request.ID, request.Decision, request.Comment, string(rawObject(request.OutputJSON)), request.ExpectedVersion)
 	respond(c, h, gin.H{"task": taskDTO(task), "instance": instanceDTO(instance)}, err)
 }
 
@@ -449,7 +463,7 @@ func (h *Handler) DelegateTask(c *gin.Context) {
 	if !bind(c, h, &request) {
 		return
 	}
-	value, err := h.workflow.DelegateTask(c.Request.Context(), request.TenantID, request.ID, request.DelegateTo, request.Reason, request.ExpectedVersion)
+	value, err := h.workflow.DelegateTask(c.Request.Context(), request.TenantID, request.ApplicationID, request.ID, request.DelegateTo, request.Reason, request.ExpectedVersion)
 	respond(c, h, taskDTO(value), err)
 }
 
@@ -468,7 +482,7 @@ func (h *Handler) GetTask(c *gin.Context) {
 	if !bind(c, h, &request) {
 		return
 	}
-	value, err := h.workflow.GetTask(c.Request.Context(), request.TenantID, request.ID)
+	value, err := h.workflow.GetTask(c.Request.Context(), request.TenantID, request.ApplicationID, request.ID)
 	respond(c, h, taskDTO(value), err)
 }
 
@@ -488,7 +502,7 @@ func (h *Handler) ListTasks(c *gin.Context) {
 	if !bind(c, h, &request) {
 		return
 	}
-	value, err := h.workflow.ListMyTasks(c.Request.Context(), workflow.TaskFilter{TenantID: request.TenantID, InstanceID: request.InstanceID, Status: request.Status, Search: request.Search, Page: request.Page, PageSize: request.PageSize})
+	value, err := h.workflow.ListMyTasks(c.Request.Context(), workflow.TaskFilter{TenantID: request.TenantID, ApplicationID: request.ApplicationID, InstanceID: request.InstanceID, Status: request.Status, Search: request.Search, Page: request.Page, PageSize: request.PageSize})
 	items := make([]TaskDTO, 0, len(value.Items))
 	for _, item := range value.Items {
 		items = append(items, taskDTO(item))
@@ -528,6 +542,8 @@ func workflowHTTPError(err error) error {
 		return apperror.StaleVersion(err)
 	case errors.Is(err, workflow.ErrConflict):
 		return apperror.Conflict("workflow resource conflict", err)
+	case errors.Is(err, appaccess.ErrUnavailable):
+		return apperror.Unavailable("application authorization is unavailable", err)
 	default:
 		return apperror.Internal(err)
 	}
@@ -559,10 +575,10 @@ func definitionDTO(value workflow.Definition) DefinitionDTO {
 	return DefinitionDTO{ID: value.ID, TenantID: value.TenantID, ApplicationID: value.ApplicationID, Key: value.Key, Name: value.Name, Description: value.Description, Status: value.Status, PublishedRevision: value.PublishedRevision, Nodes: nodes, Edges: edges, Version: value.Version, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt, CreatedBy: value.CreatedBy, UpdatedBy: value.UpdatedBy}
 }
 func instanceDTO(value workflow.Instance) InstanceDTO {
-	return InstanceDTO{ID: value.ID, TenantID: value.TenantID, DefinitionID: value.DefinitionID, DefinitionRevision: value.DefinitionRevision, BusinessKey: value.BusinessKey, Title: value.Title, StarterID: value.StarterID, Status: value.Status, CurrentNodeID: value.CurrentNodeID, VariablesJSON: rawObject(json.RawMessage(value.VariablesJSON)), ResultJSON: rawObject(json.RawMessage(value.ResultJSON)), ErrorCode: value.ErrorCode, ErrorMessage: value.ErrorMessage, StartedAt: value.StartedAt, FinishedAt: value.FinishedAt, Version: value.Version, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt, CreatedBy: value.CreatedBy, UpdatedBy: value.UpdatedBy}
+	return InstanceDTO{ID: value.ID, TenantID: value.TenantID, ApplicationID: value.ApplicationID, DefinitionID: value.DefinitionID, DefinitionRevision: value.DefinitionRevision, BusinessKey: value.BusinessKey, Title: value.Title, StarterID: value.StarterID, Status: value.Status, CurrentNodeID: value.CurrentNodeID, VariablesJSON: rawObject(json.RawMessage(value.VariablesJSON)), ResultJSON: rawObject(json.RawMessage(value.ResultJSON)), ErrorCode: value.ErrorCode, ErrorMessage: value.ErrorMessage, StartedAt: value.StartedAt, FinishedAt: value.FinishedAt, Version: value.Version, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt, CreatedBy: value.CreatedBy, UpdatedBy: value.UpdatedBy}
 }
 func taskDTO(value workflow.Task) TaskDTO {
-	return TaskDTO{ID: value.ID, TenantID: value.TenantID, InstanceID: value.InstanceID, NodeID: value.NodeID, Name: value.Name, AssigneeType: value.AssigneeType, Assignee: value.Assignee, ClaimedBy: value.ClaimedBy, Status: value.Status, Decision: value.Decision, Comment: value.Comment, InputJSON: rawObject(json.RawMessage(value.InputJSON)), OutputJSON: rawObject(json.RawMessage(value.OutputJSON)), DueAt: value.DueAt, CompletedAt: value.CompletedAt, Version: value.Version, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt, CreatedBy: value.CreatedBy, UpdatedBy: value.UpdatedBy}
+	return TaskDTO{ID: value.ID, TenantID: value.TenantID, ApplicationID: value.ApplicationID, InstanceID: value.InstanceID, NodeID: value.NodeID, Name: value.Name, AssigneeType: value.AssigneeType, Assignee: value.Assignee, ClaimedBy: value.ClaimedBy, Status: value.Status, Decision: value.Decision, Comment: value.Comment, InputJSON: rawObject(json.RawMessage(value.InputJSON)), OutputJSON: rawObject(json.RawMessage(value.OutputJSON)), DueAt: value.DueAt, CompletedAt: value.CompletedAt, Version: value.Version, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt, CreatedBy: value.CreatedBy, UpdatedBy: value.UpdatedBy}
 }
 
 func rawObject(value json.RawMessage) json.RawMessage {

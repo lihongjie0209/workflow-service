@@ -20,8 +20,8 @@ const runtimeActor = "workflow-service:temporal-worker"
 
 type RuntimeStore interface {
 	CreateTask(context.Context, domain.Task) (domain.Task, error)
-	UpdateInstanceNode(context.Context, string, string, string, string) error
-	FinishInstance(context.Context, string, string, string, string, string, string) (domain.Instance, error)
+	UpdateInstanceNode(context.Context, string, string, string, string, string) error
+	FinishInstance(context.Context, string, string, string, string, string, string, string) (domain.Instance, error)
 }
 
 type DynamicInvoker interface {
@@ -55,7 +55,7 @@ func (a *Activities) CreateApprovalTask(ctx context.Context, input ApprovalTaskI
 		dueAt = &value
 	}
 	_, err := a.store.CreateTask(ctx, domain.Task{
-		ID: a.newID(), TenantID: input.TenantID, InstanceID: input.InstanceID, NodeID: input.Node.ID,
+		ID: a.newID(), TenantID: input.TenantID, ApplicationID: input.ApplicationID, InstanceID: input.InstanceID, NodeID: input.Node.ID,
 		Name: input.Node.Name, AssigneeType: input.Node.AssigneeType, Assignee: assignee, Status: domain.TaskPending,
 		InputJSON: defaultJSON(input.VariablesJSON), OutputJSON: "{}", DueAt: dueAt, Version: 1,
 		CreatedAt: now, UpdatedAt: now, CreatedBy: runtimeActor, UpdatedBy: runtimeActor,
@@ -68,7 +68,7 @@ func (a *Activities) CreateApprovalTask(ctx context.Context, input ApprovalTaskI
 
 func (a *Activities) InvokeServiceTask(ctx context.Context, input ServiceTaskInput) (ServiceTaskResult, error) {
 	ctx = platformprincipal.SystemContext(ctx, runtimeActor)
-	if err := a.store.UpdateInstanceNode(ctx, input.TenantID, input.InstanceID, input.Node.ID, runtimeActor); err != nil {
+	if err := a.store.UpdateInstanceNode(ctx, input.TenantID, input.ApplicationID, input.InstanceID, input.Node.ID, runtimeActor); err != nil {
 		return ServiceTaskResult{}, fmt.Errorf("advance service workflow node: %w", err)
 	}
 	requestJSON, err := renderRequest(input.Node.RequestTemplateJSON, input.VariablesJSON)
@@ -130,7 +130,7 @@ func (a *Activities) EvaluateCondition(_ context.Context, input ConditionInput) 
 
 func (a *Activities) FinishInstance(ctx context.Context, input FinishInput) error {
 	ctx = platformprincipal.SystemContext(ctx, runtimeActor)
-	_, err := a.store.FinishInstance(ctx, input.TenantID, input.InstanceID, input.Status, defaultJSON(input.ResultJSON), input.ErrorMessage, runtimeActor)
+	_, err := a.store.FinishInstance(ctx, input.TenantID, input.ApplicationID, input.InstanceID, input.Status, defaultJSON(input.ResultJSON), input.ErrorMessage, runtimeActor)
 	if errors.Is(err, domain.ErrConflict) && input.Status == domain.InstanceFailed {
 		// A user cancellation can win the race with workflow cleanup. Preserve the
 		// explicit cancelled state instead of overwriting it with failed.

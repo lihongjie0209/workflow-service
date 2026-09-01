@@ -66,3 +66,19 @@ outbound:
         enabled: true
         server_name: authorization-service
         ca_file: /etc/workflow-service/tls/ca.crt
+    application:
+      target: dns:///application-service.platform.svc.cluster.local:9090
+      timeout: 5s
+      retry:
+        max_attempts: 3
+        initial_backoff: 100ms
+        max_backoff: 1s
+        methods: [/platform.application.v1.ApplicationService/BatchCheckTenantApplications]
+      breaker:
+        enabled: true
+        failure_threshold: 5
+        open_timeout: 30s
+      tls:
+        enabled: true
+        server_name: application-service
+        ca_file: /etc/workflow-service/tls/ca.crt

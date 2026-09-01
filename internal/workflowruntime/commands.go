@@ -66,10 +66,10 @@ func (h *CommandHandler) start(ctx context.Context, envelope *commonv1.EventEnve
 	if err := eventbus.DecodePayload(envelope, payload); err != nil {
 		return fmt.Errorf("decode workflow start request: %w", err)
 	}
-	if payload.Instance == nil || payload.Definition == nil || payload.Instance.Id == "" {
+	if payload.Instance == nil || payload.Definition == nil || payload.Instance.Id == "" || payload.Instance.ApplicationId == "" {
 		return errors.New("workflow start event is incomplete")
 	}
-	input := Input{InstanceID: payload.Instance.Id, TenantID: payload.Instance.TenantId, StarterID: payload.Instance.StarterId, VariablesJSON: payload.Instance.VariablesJson, Nodes: nodesFromProto(payload.Definition.Nodes), Edges: edgesFromProto(payload.Definition.Edges)}
+	input := Input{InstanceID: payload.Instance.Id, TenantID: payload.Instance.TenantId, ApplicationID: payload.Instance.ApplicationId, StarterID: payload.Instance.StarterId, VariablesJSON: payload.Instance.VariablesJson, Nodes: nodesFromProto(payload.Definition.Nodes), Edges: edgesFromProto(payload.Definition.Edges)}
 	_, err := h.client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
 		ID: workflowID(payload.Instance), TaskQueue: h.taskQueue,
 		WorkflowIDReusePolicy: enums.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE,

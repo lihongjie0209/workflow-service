@@ -91,15 +91,15 @@ func TestRepositoryAndMigrations(t *testing.T) {
 			if err != nil {
 				t.Fatalf("CreateDefinition: %v", err)
 			}
-			definition, err = repository.PublishDefinition(requestCtx, "tenant-1", definition.ID, definition.Version, "user-1")
+			definition, err = repository.PublishDefinition(requestCtx, "tenant-1", "application-1", definition.ID, definition.Version, "user-1")
 			if err != nil {
 				t.Fatalf("PublishDefinition: %v", err)
 			}
-			instance, err := repository.CreateInstance(requestCtx, workflow.Instance{ID: "instance-1", TenantID: "tenant-1", DefinitionID: definition.ID, DefinitionRevision: definition.PublishedRevision, BusinessKey: "leave-1", IdempotencyKey: "request-0001", Title: "Leave", StarterID: "user-1", Status: workflow.InstanceRunning, VariablesJSON: `{}`, ResultJSON: `{}`, TemporalWorkflowID: "workflow:tenant-1:instance-1", StartedAt: now, Version: 1, CreatedAt: now, UpdatedAt: now, CreatedBy: "user-1", UpdatedBy: "user-1"}, definition)
+			instance, err := repository.CreateInstance(requestCtx, workflow.Instance{ID: "instance-1", TenantID: "tenant-1", ApplicationID: "application-1", DefinitionID: definition.ID, DefinitionRevision: definition.PublishedRevision, BusinessKey: "leave-1", IdempotencyKey: "request-0001", Title: "Leave", StarterID: "user-1", Status: workflow.InstanceRunning, VariablesJSON: `{}`, ResultJSON: `{}`, TemporalWorkflowID: "workflow:tenant-1:instance-1", StartedAt: now, Version: 1, CreatedAt: now, UpdatedAt: now, CreatedBy: "user-1", UpdatedBy: "user-1"}, definition)
 			if err != nil {
 				t.Fatalf("CreateInstance: %v", err)
 			}
-			task, err := repository.CreateTask(platformprincipal.SystemContext(ctx, "workflow-worker"), workflow.Task{ID: "task-1", TenantID: "tenant-1", InstanceID: instance.ID, NodeID: "approval", Name: "Approve", AssigneeType: workflow.AssigneeRole, Assignee: "approver", Status: workflow.TaskPending, InputJSON: `{}`, OutputJSON: `{}`, Version: 1, CreatedAt: now, UpdatedAt: now, CreatedBy: "workflow-worker", UpdatedBy: "workflow-worker"})
+			task, err := repository.CreateTask(platformprincipal.SystemContext(ctx, "workflow-worker"), workflow.Task{ID: "task-1", TenantID: "tenant-1", ApplicationID: "application-1", InstanceID: instance.ID, NodeID: "approval", Name: "Approve", AssigneeType: workflow.AssigneeRole, Assignee: "approver", Status: workflow.TaskPending, InputJSON: `{}`, OutputJSON: `{}`, Version: 1, CreatedAt: now, UpdatedAt: now, CreatedBy: "workflow-worker", UpdatedBy: "workflow-worker"})
 			if err != nil {
 				t.Fatalf("CreateTask: %v", err)
 			}

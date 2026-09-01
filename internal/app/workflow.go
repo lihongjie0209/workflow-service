@@ -3,10 +3,13 @@ package app
 import (
 	"errors"
 	"log/slog"
+	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lihongjie0209/microservice-platform-go/appaccess"
 	"github.com/lihongjie0209/microservice-platform-go/dynamicgrpc"
 	platformoutbox "github.com/lihongjie0209/microservice-platform-go/outbox"
+	applicationv1 "github.com/lihongjie0209/platform-protos/gen/go/platform/application/v1"
 	authorizationv1 "github.com/lihongjie0209/platform-protos/gen/go/platform/authorization/v1"
 	"github.com/lihongjie0209/workflow-service/internal/config"
 	"github.com/lihongjie0209/workflow-service/internal/outbound"
@@ -59,11 +62,25 @@ func newWorkflowAssignmentResolver(repository *workflow.Repository, registry *ou
 	return workflowauth.New(authorizationv1.NewAuthorizationServiceClient(connection))
 }
 
-func newWorkflowService(repository *workflow.Repository, resolver *workflowauth.Resolver) (*workflow.Service, error) {
+func newApplicationVerifier(repository *workflow.Repository, registry *outbound.Registry) (appaccess.Verifier, error) {
 	if repository == nil {
 		return nil, nil
 	}
-	return workflow.NewService(repository, resolver)
+	if registry == nil {
+		return nil, errors.New("workflow service requires outbound registry")
+	}
+	connection, ok := registry.GRPC("application")
+	if !ok {
+		return nil, errors.New("workflow service requires outbound.grpc.application")
+	}
+	return appaccess.NewGRPCVerifier(applicationv1.NewApplicationServiceClient(connection), 2*time.Second), nil
+}
+
+func newWorkflowService(repository *workflow.Repository, resolver *workflowauth.Resolver, applications appaccess.Verifier) (*workflow.Service, error) {
+	if repository == nil {
+		return nil, nil
+	}
+	return workflow.NewService(repository, resolver, applications)
 }
 
 var WorkflowModule = fx.Module("workflow",
@@ -72,6 +89,7 @@ var WorkflowModule = fx.Module("workflow",
 		workflowevent.NewFactory,
 		newWorkflowRepository,
 		newWorkflowAssignmentResolver,
+		newApplicationVerifier,
 		newWorkflowService,
 		newDynamicGRPCInvoker,
 		newWorkflowActivities,

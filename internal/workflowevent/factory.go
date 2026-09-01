@@ -108,7 +108,7 @@ func definition(value workflow.Definition) *workflowv1.WorkflowDefinition {
 
 func instance(value workflow.Instance) *workflowv1.WorkflowInstance {
 	return &workflowv1.WorkflowInstance{
-		Id: value.ID, TenantId: value.TenantID, DefinitionId: value.DefinitionID, DefinitionRevision: value.DefinitionRevision,
+		Id: value.ID, TenantId: value.TenantID, ApplicationId: value.ApplicationID, DefinitionId: value.DefinitionID, DefinitionRevision: value.DefinitionRevision,
 		BusinessKey: value.BusinessKey, Title: value.Title, StarterId: value.StarterID, Status: instanceStatus(value.Status),
 		CurrentNodeId: value.CurrentNodeID, VariablesJson: value.VariablesJSON, ResultJson: value.ResultJSON,
 		ErrorCode: value.ErrorCode, ErrorMessage: value.ErrorMessage, StartedAt: timestamp(value.StartedAt),
@@ -119,7 +119,7 @@ func instance(value workflow.Instance) *workflowv1.WorkflowInstance {
 
 func task(value workflow.Task) *workflowv1.WorkflowTask {
 	return &workflowv1.WorkflowTask{
-		Id: value.ID, TenantId: value.TenantID, InstanceId: value.InstanceID, NodeId: value.NodeID, Name: value.Name,
+		Id: value.ID, TenantId: value.TenantID, ApplicationId: value.ApplicationID, InstanceId: value.InstanceID, NodeId: value.NodeID, Name: value.Name,
 		AssigneeType: assigneeType(value.AssigneeType), Assignee: value.Assignee, ClaimedBy: value.ClaimedBy,
 		Status: taskStatus(value.Status), Decision: taskDecision(value.Decision), Comment: value.Comment,
 		InputJson: value.InputJSON, OutputJson: value.OutputJSON, DueAt: optionalTimestamp(value.DueAt),

@@ -19,7 +19,7 @@ func TestActivitiesCreateApprovalTaskResolvesStarterAndAudit(t *testing.T) {
 	activities.now = func() time.Time { return time.Unix(100, 0) }
 	activities.newID = func() string { return "task-1" }
 	err = activities.CreateApprovalTask(context.Background(), ApprovalTaskInput{
-		InstanceID: "instance-1", TenantID: "tenant-1", StarterID: "starter-1", VariablesJSON: `{"days":2}`,
+		InstanceID: "instance-1", TenantID: "tenant-1", ApplicationID: "app-1", StarterID: "starter-1", VariablesJSON: `{"days":2}`,
 		Node: domain.Node{ID: "approval", Name: "Approve", Type: domain.NodeApproval, AssigneeType: domain.AssigneeStarter, TimeoutSeconds: 60},
 	})
 	if err != nil {
@@ -40,7 +40,7 @@ func TestActivitiesInvokeServiceTaskRendersJSONTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := activities.InvokeServiceTask(context.Background(), ServiceTaskInput{
-		InstanceID: "instance-1", TenantID: "tenant-1", VariablesJSON: `{"order_id":"order-1"}`,
+		InstanceID: "instance-1", TenantID: "tenant-1", ApplicationID: "app-1", VariablesJSON: `{"order_id":"order-1"}`,
 		Node: domain.Node{ID: "invoke", TargetService: "order-service", FullMethod: "/platform.order.v1.Order/Create", RequestTemplateJSON: `{"id":"{{.variables.order_id}}"}`},
 	})
 	if err != nil {
@@ -79,12 +79,12 @@ func (f *fakeRuntimeStore) CreateTask(_ context.Context, task domain.Task) (doma
 	f.task = task
 	return task, f.err
 }
-func (f *fakeRuntimeStore) UpdateInstanceNode(_ context.Context, _, _, nodeID, _ string) error {
+func (f *fakeRuntimeStore) UpdateInstanceNode(_ context.Context, _, _, _, nodeID, _ string) error {
 	f.nodeID = nodeID
 	return f.err
 }
-func (f *fakeRuntimeStore) FinishInstance(_ context.Context, tenantID, instanceID, status, result, message, _ string) (domain.Instance, error) {
-	f.finish = FinishInput{TenantID: tenantID, InstanceID: instanceID, Status: status, ResultJSON: result, ErrorMessage: message}
+func (f *fakeRuntimeStore) FinishInstance(_ context.Context, tenantID, applicationID, instanceID, status, result, message, _ string) (domain.Instance, error) {
+	f.finish = FinishInput{TenantID: tenantID, ApplicationID: applicationID, InstanceID: instanceID, Status: status, ResultJSON: result, ErrorMessage: message}
 	return domain.Instance{}, f.err
 }
 

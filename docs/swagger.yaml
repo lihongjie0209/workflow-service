@@ -31,6 +31,8 @@ definitions:
     type: object
   httptransport.CancelInstanceRequest:
     properties:
+      application_id:
+        type: string
       expected_version:
         type: integer
       id:
@@ -40,6 +42,7 @@ definitions:
       tenant_id:
         type: string
     required:
+    - application_id
     - expected_version
     - id
     - reason
@@ -47,6 +50,8 @@ definitions:
     type: object
   httptransport.CompleteTaskRequest:
     properties:
+      application_id:
+        type: string
       comment:
         type: string
       decision:
@@ -60,6 +65,7 @@ definitions:
       tenant_id:
         type: string
     required:
+    - application_id
     - decision
     - expected_version
     - id
@@ -132,6 +138,8 @@ definitions:
     type: object
   httptransport.DelegateTaskRequest:
     properties:
+      application_id:
+        type: string
       delegate_to:
         type: string
       expected_version:
@@ -143,6 +151,7 @@ definitions:
       tenant_id:
         type: string
     required:
+    - application_id
     - delegate_to
     - expected_version
     - id
@@ -151,6 +160,8 @@ definitions:
     type: object
   httptransport.GetDefinitionRequest:
     properties:
+      application_id:
+        type: string
       id:
         type: string
       revision:
@@ -158,31 +169,40 @@ definitions:
       tenant_id:
         type: string
     required:
+    - application_id
     - id
     - tenant_id
     type: object
   httptransport.GetInstanceRequest:
     properties:
+      application_id:
+        type: string
       id:
         type: string
       tenant_id:
         type: string
     required:
+    - application_id
     - id
     - tenant_id
     type: object
   httptransport.GetTaskRequest:
     properties:
+      application_id:
+        type: string
       id:
         type: string
       tenant_id:
         type: string
     required:
+    - application_id
     - id
     - tenant_id
     type: object
   httptransport.InstanceDTO:
     properties:
+      application_id:
+        type: string
       business_key:
         type: string
       created_at:
@@ -243,6 +263,8 @@ definitions:
     type: object
   httptransport.ListInstancesRequest:
     properties:
+      application_id:
+        type: string
       definition_id:
         type: string
       page:
@@ -262,10 +284,13 @@ definitions:
       tenant_id:
         type: string
     required:
+    - application_id
     - tenant_id
     type: object
   httptransport.ListTasksRequest:
     properties:
+      application_id:
+        type: string
       instance_id:
         type: string
       page:
@@ -279,6 +304,7 @@ definitions:
       tenant_id:
         type: string
     required:
+    - application_id
     - tenant_id
     type: object
   httptransport.MeResponseBody:
@@ -337,6 +363,8 @@ definitions:
     type: object
   httptransport.StartInstanceRequest:
     properties:
+      application_id:
+        type: string
       business_key:
         type: string
       definition_key:
@@ -350,6 +378,7 @@ definitions:
       variables_json:
         type: object
     required:
+    - application_id
     - business_key
     - definition_key
     - idempotency_key
@@ -358,6 +387,8 @@ definitions:
     type: object
   httptransport.TaskDTO:
     properties:
+      application_id:
+        type: string
       assignee:
         type: string
       assignee_type:
@@ -401,6 +432,8 @@ definitions:
     type: object
   httptransport.TaskVersionRequest:
     properties:
+      application_id:
+        type: string
       expected_version:
         type: integer
       id:
@@ -408,6 +441,7 @@ definitions:
       tenant_id:
         type: string
     required:
+    - application_id
     - expected_version
     - id
     - tenant_id
@@ -445,6 +479,8 @@ definitions:
     type: object
   httptransport.VersionedDefinitionRequest:
     properties:
+      application_id:
+        type: string
       expected_version:
         type: integer
       id:
@@ -452,6 +488,7 @@ definitions:
       tenant_id:
         type: string
     required:
+    - application_id
     - expected_version
     - id
     - tenant_id

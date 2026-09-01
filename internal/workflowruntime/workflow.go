@@ -26,6 +26,7 @@ const (
 type Input struct {
 	InstanceID    string
 	TenantID      string
+	ApplicationID string
 	StarterID     string
 	VariablesJSON string
 	Nodes         []domain.Node
@@ -38,8 +39,8 @@ type Result struct {
 }
 
 type ApprovalTaskInput struct {
-	InstanceID, TenantID, StarterID, VariablesJSON string
-	Node                                           domain.Node
+	InstanceID, TenantID, ApplicationID, StarterID, VariablesJSON string
+	Node                                                          domain.Node
 }
 
 type TaskSignal struct {
@@ -47,8 +48,8 @@ type TaskSignal struct {
 }
 
 type ServiceTaskInput struct {
-	InstanceID, TenantID, VariablesJSON string
-	Node                                domain.Node
+	InstanceID, TenantID, ApplicationID, VariablesJSON string
+	Node                                               domain.Node
 }
 
 type ServiceTaskResult struct {
@@ -60,13 +61,13 @@ type ConditionInput struct {
 }
 
 type FinishInput struct {
-	InstanceID, TenantID, Status, ResultJSON, ErrorMessage string
+	InstanceID, TenantID, ApplicationID, Status, ResultJSON, ErrorMessage string
 }
 
 // Execute is deliberately a free function with a stable registered name. Do
 // not rename activity/signal constants after production histories exist.
 func Execute(ctx workflow.Context, input Input) (result Result, returnErr error) {
-	if input.InstanceID == "" || input.TenantID == "" {
+	if input.InstanceID == "" || input.TenantID == "" || input.ApplicationID == "" {
 		return Result{}, temporal.NewNonRetryableApplicationError("workflow identity is required", "INVALID_WORKFLOW", nil)
 	}
 	nodes := make(map[string]domain.Node, len(input.Nodes))
@@ -100,7 +101,7 @@ func Execute(ctx workflow.Context, input Input) (result Result, returnErr error)
 			}
 			_ = workflow.ExecuteActivity(disconnected, ActivityCompensateServiceTask, completedServices[index]).Get(disconnected, nil)
 		}
-		_ = workflow.ExecuteActivity(disconnected, ActivityFinishInstance, FinishInput{InstanceID: input.InstanceID, TenantID: input.TenantID, Status: domain.InstanceFailed, ResultJSON: lastOutput, ErrorMessage: returnErr.Error()}).Get(disconnected, nil)
+		_ = workflow.ExecuteActivity(disconnected, ActivityFinishInstance, FinishInput{InstanceID: input.InstanceID, TenantID: input.TenantID, ApplicationID: input.ApplicationID, Status: domain.InstanceFailed, ResultJSON: lastOutput, ErrorMessage: returnErr.Error()}).Get(disconnected, nil)
 	}()
 
 	for steps := 0; steps <= len(nodes); steps++ {
@@ -108,7 +109,7 @@ func Execute(ctx workflow.Context, input Input) (result Result, returnErr error)
 		case domain.NodeStart:
 		case domain.NodeApproval:
 			approvalCtx := withNodeTimeout(activityCtx, current.TimeoutSeconds)
-			if err := workflow.ExecuteActivity(approvalCtx, ActivityCreateApprovalTask, ApprovalTaskInput{InstanceID: input.InstanceID, TenantID: input.TenantID, StarterID: input.StarterID, VariablesJSON: input.VariablesJSON, Node: current}).Get(approvalCtx, nil); err != nil {
+			if err := workflow.ExecuteActivity(approvalCtx, ActivityCreateApprovalTask, ApprovalTaskInput{InstanceID: input.InstanceID, TenantID: input.TenantID, ApplicationID: input.ApplicationID, StarterID: input.StarterID, VariablesJSON: input.VariablesJSON, Node: current}).Get(approvalCtx, nil); err != nil {
 				return Result{}, fmt.Errorf("create approval task %q: %w", current.ID, err)
 			}
 			var signal TaskSignal
@@ -135,7 +136,7 @@ func Execute(ctx workflow.Context, input Input) (result Result, returnErr error)
 			}
 		case domain.NodeServiceTask:
 			serviceCtx := withNodeTimeout(activityCtx, current.TimeoutSeconds)
-			activityInput := ServiceTaskInput{InstanceID: input.InstanceID, TenantID: input.TenantID, VariablesJSON: input.VariablesJSON, Node: current}
+			activityInput := ServiceTaskInput{InstanceID: input.InstanceID, TenantID: input.TenantID, ApplicationID: input.ApplicationID, VariablesJSON: input.VariablesJSON, Node: current}
 			var serviceResult ServiceTaskResult
 			if err := workflow.ExecuteActivity(serviceCtx, ActivityInvokeServiceTask, activityInput).Get(serviceCtx, &serviceResult); err != nil {
 				return Result{}, fmt.Errorf("invoke service task %q: %w", current.ID, err)
@@ -199,7 +200,7 @@ func selectNext(ctx workflow.Context, nodeID string, edges []domain.Edge, variab
 }
 
 func finish(ctx workflow.Context, input Input, status, resultJSON, message string) error {
-	if err := workflow.ExecuteActivity(ctx, ActivityFinishInstance, FinishInput{InstanceID: input.InstanceID, TenantID: input.TenantID, Status: status, ResultJSON: resultJSON, ErrorMessage: message}).Get(ctx, nil); err != nil {
+	if err := workflow.ExecuteActivity(ctx, ActivityFinishInstance, FinishInput{InstanceID: input.InstanceID, TenantID: input.TenantID, ApplicationID: input.ApplicationID, Status: status, ResultJSON: resultJSON, ErrorMessage: message}).Get(ctx, nil); err != nil {
 		return fmt.Errorf("finish workflow instance: %w", err)
 	}
 	return nil

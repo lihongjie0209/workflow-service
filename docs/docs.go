@@ -1437,12 +1437,16 @@ const docTemplate = `{
         "httptransport.CancelInstanceRequest": {
             "type": "object",
             "required": [
+                "application_id",
                 "expected_version",
                 "id",
                 "reason",
                 "tenant_id"
             ],
             "properties": {
+                "application_id": {
+                    "type": "string"
+                },
                 "expected_version": {
                     "type": "integer"
                 },
@@ -1460,12 +1464,16 @@ const docTemplate = `{
         "httptransport.CompleteTaskRequest": {
             "type": "object",
             "required": [
+                "application_id",
                 "decision",
                 "expected_version",
                 "id",
                 "tenant_id"
             ],
             "properties": {
+                "application_id": {
+                    "type": "string"
+                },
                 "comment": {
                     "type": "string"
                 },
@@ -1585,6 +1593,7 @@ const docTemplate = `{
         "httptransport.DelegateTaskRequest": {
             "type": "object",
             "required": [
+                "application_id",
                 "delegate_to",
                 "expected_version",
                 "id",
@@ -1592,6 +1601,9 @@ const docTemplate = `{
                 "tenant_id"
             ],
             "properties": {
+                "application_id": {
+                    "type": "string"
+                },
                 "delegate_to": {
                     "type": "string"
                 },
@@ -1612,10 +1624,14 @@ const docTemplate = `{
         "httptransport.GetDefinitionRequest": {
             "type": "object",
             "required": [
+                "application_id",
                 "id",
                 "tenant_id"
             ],
             "properties": {
+                "application_id": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -1630,10 +1646,14 @@ const docTemplate = `{
         "httptransport.GetInstanceRequest": {
             "type": "object",
             "required": [
+                "application_id",
                 "id",
                 "tenant_id"
             ],
             "properties": {
+                "application_id": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -1645,10 +1665,14 @@ const docTemplate = `{
         "httptransport.GetTaskRequest": {
             "type": "object",
             "required": [
+                "application_id",
                 "id",
                 "tenant_id"
             ],
             "properties": {
+                "application_id": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -1660,6 +1684,9 @@ const docTemplate = `{
         "httptransport.InstanceDTO": {
             "type": "object",
             "properties": {
+                "application_id": {
+                    "type": "string"
+                },
                 "business_key": {
                     "type": "string"
                 },
@@ -1751,9 +1778,13 @@ const docTemplate = `{
         "httptransport.ListInstancesRequest": {
             "type": "object",
             "required": [
+                "application_id",
                 "tenant_id"
             ],
             "properties": {
+                "application_id": {
+                    "type": "string"
+                },
                 "definition_id": {
                     "type": "string"
                 },
@@ -1786,9 +1817,13 @@ const docTemplate = `{
         "httptransport.ListTasksRequest": {
             "type": "object",
             "required": [
+                "application_id",
                 "tenant_id"
             ],
             "properties": {
+                "application_id": {
+                    "type": "string"
+                },
                 "instance_id": {
                     "type": "string"
                 },
@@ -1895,6 +1930,7 @@ const docTemplate = `{
         "httptransport.StartInstanceRequest": {
             "type": "object",
             "required": [
+                "application_id",
                 "business_key",
                 "definition_key",
                 "idempotency_key",
@@ -1902,6 +1938,9 @@ const docTemplate = `{
                 "title"
             ],
             "properties": {
+                "application_id": {
+                    "type": "string"
+                },
                 "business_key": {
                     "type": "string"
                 },
@@ -1925,6 +1964,9 @@ const docTemplate = `{
         "httptransport.TaskDTO": {
             "type": "object",
             "properties": {
+                "application_id": {
+                    "type": "string"
+                },
                 "assignee": {
                     "type": "string"
                 },
@@ -1990,11 +2032,15 @@ const docTemplate = `{
         "httptransport.TaskVersionRequest": {
             "type": "object",
             "required": [
+                "application_id",
                 "expected_version",
                 "id",
                 "tenant_id"
             ],
             "properties": {
+                "application_id": {
+                    "type": "string"
+                },
                 "expected_version": {
                     "type": "integer"
                 },
@@ -2053,11 +2099,15 @@ const docTemplate = `{
         "httptransport.VersionedDefinitionRequest": {
             "type": "object",
             "required": [
+                "application_id",
                 "expected_version",
                 "id",
                 "tenant_id"
             ],
             "properties": {
+                "application_id": {
+                    "type": "string"
+                },
                 "expected_version": {
                     "type": "integer"
                 },

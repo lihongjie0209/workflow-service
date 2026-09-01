@@ -30,10 +30,10 @@ func TestRepositoryCreateInstanceCommitsStateAndEventTogether(t *testing.T) {
 	}
 
 	now := time.Unix(100, 0)
-	value := Instance{ID: "instance-1", TenantID: "tenant-1", DefinitionID: "definition-1", DefinitionRevision: 2, BusinessKey: "business-1", IdempotencyKey: "request-1", Title: "Approval", StarterID: "user-1", Status: InstanceRunning, VariablesJSON: "{}", ResultJSON: "{}", StartedAt: now, Version: 1, CreatedAt: now, UpdatedAt: now, CreatedBy: "user-1", UpdatedBy: "user-1"}
+	value := Instance{ID: "instance-1", TenantID: "tenant-1", ApplicationID: "app-1", DefinitionID: "definition-1", DefinitionRevision: 2, BusinessKey: "business-1", IdempotencyKey: "request-1", Title: "Approval", StarterID: "user-1", Status: InstanceRunning, VariablesJSON: "{}", ResultJSON: "{}", StartedAt: now, Version: 1, CreatedAt: now, UpdatedAt: now, CreatedBy: "user-1", UpdatedBy: "user-1"}
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO workflow_instances ("+instanceColumns+") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?,?,?)")).
-		WithArgs(value.ID, value.TenantID, value.DefinitionID, value.DefinitionRevision, value.BusinessKey, value.IdempotencyKey, value.Title, value.StarterID, value.Status, value.CurrentNodeID, value.VariablesJSON, value.ResultJSON, value.ErrorCode, value.ErrorMessage, value.TemporalWorkflowID, value.TemporalRunID, value.StartedAt, value.FinishedAt, value.CreatedAt, value.UpdatedAt, value.CreatedBy, value.UpdatedBy).
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO workflow_instances ("+instanceColumns+") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?,?,?)")).
+		WithArgs(value.ID, value.TenantID, value.ApplicationID, value.DefinitionID, value.DefinitionRevision, value.BusinessKey, value.IdempotencyKey, value.Title, value.StarterID, value.Status, value.CurrentNodeID, value.VariablesJSON, value.ResultJSON, value.ErrorCode, value.ErrorMessage, value.TemporalWorkflowID, value.TemporalRunID, value.StartedAt, value.FinishedAt, value.CreatedAt, value.UpdatedAt, value.CreatedBy, value.UpdatedBy).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 
@@ -80,14 +80,14 @@ func TestRepositoryCreateInstanceRollsBackWhenOutboxFails(t *testing.T) {
 func TestTaskWhereBuildsServerResolvedAssignmentFilter(t *testing.T) {
 	t.Parallel()
 
-	query, args, err := taskWhere(TaskFilter{TenantID: "tenant-1", AssigneeUserID: "user-1", RoleIDs: []string{"role-1", "role-2"}, IncludeUnclaimed: true})
+	query, args, err := taskWhere(TaskFilter{TenantID: "tenant-1", ApplicationID: "app-1", AssigneeUserID: "user-1", RoleIDs: []string{"role-1", "role-2"}, IncludeUnclaimed: true})
 	if err != nil {
 		t.Fatalf("taskWhere() error = %v", err)
 	}
-	if query != "WHERE tenant_id=? AND ((assignee_type IN ('user','starter') AND assignee=?) OR (assignee_type='role' AND assignee IN (?, ?)) OR claimed_by=?)" {
+	if query != "WHERE tenant_id=? AND application_id=? AND ((assignee_type IN ('user','starter') AND assignee=?) OR (assignee_type='role' AND assignee IN (?, ?)) OR claimed_by=?)" {
 		t.Fatalf("taskWhere() query = %q", query)
 	}
-	want := []any{"tenant-1", "user-1", "role-1", "role-2", "user-1"}
+	want := []any{"tenant-1", "app-1", "user-1", "role-1", "role-2", "user-1"}
 	if len(args) != len(want) {
 		t.Fatalf("taskWhere() args = %#v", args)
 	}

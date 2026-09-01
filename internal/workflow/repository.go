@@ -15,8 +15,8 @@ import (
 )
 
 const definitionColumns = `id,tenant_id,application_id,definition_key,name,description,status,published_revision,nodes_json,edges_json,version,created_at,updated_at,created_by,updated_by`
-const instanceColumns = `id,tenant_id,definition_id,definition_revision,business_key,idempotency_key,title,starter_id,status,current_node_id,variables_json,result_json,error_code,error_message,temporal_workflow_id,temporal_run_id,started_at,finished_at,version,created_at,updated_at,created_by,updated_by`
-const taskColumns = `id,tenant_id,instance_id,node_id,name,assignee_type,assignee,claimed_by,status,decision,comment,input_json,output_json,due_at,completed_at,version,created_at,updated_at,created_by,updated_by`
+const instanceColumns = `id,tenant_id,application_id,definition_id,definition_revision,business_key,idempotency_key,title,starter_id,status,current_node_id,variables_json,result_json,error_code,error_message,temporal_workflow_id,temporal_run_id,started_at,finished_at,version,created_at,updated_at,created_by,updated_by`
+const taskColumns = `id,tenant_id,application_id,instance_id,node_id,name,assignee_type,assignee,claimed_by,status,decision,comment,input_json,output_json,due_at,completed_at,version,created_at,updated_at,created_by,updated_by`
 
 type Repository struct {
 	db     *sqlx.DB
@@ -67,28 +67,28 @@ func (r *Repository) CreateDefinition(ctx context.Context, value Definition) (De
 	if _, err := r.db.ExecContext(ctx, query, value.ID, value.TenantID, value.ApplicationID, value.Key, value.Name, value.Description, value.Status, value.PublishedRevision, value.NodesJSON, value.EdgesJSON, value.CreatedAt, value.UpdatedAt, value.CreatedBy, value.UpdatedBy); err != nil {
 		return Definition{}, fmt.Errorf("insert workflow definition: %w", err)
 	}
-	return r.GetDefinition(ctx, value.TenantID, value.ID, 0)
+	return r.GetDefinition(ctx, value.TenantID, value.ApplicationID, value.ID, 0)
 }
 
 func (r *Repository) UpdateDefinition(ctx context.Context, value Definition, expectedVersion int64, actor string) (Definition, error) {
 	now := r.now()
-	query := r.db.Rebind(`UPDATE workflow_definitions SET application_id=?,name=?,description=?,nodes_json=?,edges_json=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND tenant_id=? AND version=? AND status='draft'`)
-	result, err := r.db.ExecContext(ctx, query, value.ApplicationID, value.Name, value.Description, value.NodesJSON, value.EdgesJSON, now, actor, value.ID, value.TenantID, expectedVersion)
+	query := r.db.Rebind(`UPDATE workflow_definitions SET name=?,description=?,nodes_json=?,edges_json=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND tenant_id=? AND application_id=? AND version=? AND status='draft'`)
+	result, err := r.db.ExecContext(ctx, query, value.Name, value.Description, value.NodesJSON, value.EdgesJSON, now, actor, value.ID, value.TenantID, value.ApplicationID, expectedVersion)
 	if err := affectedOne(result, err, "update workflow definition"); err != nil {
 		return Definition{}, err
 	}
-	return r.GetDefinition(ctx, value.TenantID, value.ID, 0)
+	return r.GetDefinition(ctx, value.TenantID, value.ApplicationID, value.ID, 0)
 }
 
-func (r *Repository) PublishDefinition(ctx context.Context, tenantID, id string, expectedVersion int64, actor string) (Definition, error) {
+func (r *Repository) PublishDefinition(ctx context.Context, tenantID, applicationID, id string, expectedVersion int64, actor string) (Definition, error) {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return Definition{}, fmt.Errorf("begin workflow definition publish: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 	var current Definition
-	query := r.db.Rebind(`SELECT ` + definitionColumns + ` FROM workflow_definitions WHERE id=? AND tenant_id=? FOR UPDATE`)
-	if err := tx.GetContext(ctx, &current, query, id, tenantID); err != nil {
+	query := r.db.Rebind(`SELECT ` + definitionColumns + ` FROM workflow_definitions WHERE id=? AND tenant_id=? AND application_id=? FOR UPDATE`)
+	if err := tx.GetContext(ctx, &current, query, id, tenantID, applicationID); err != nil {
 		return Definition{}, mapNotFound(err, "select workflow definition for publish")
 	}
 	if current.Version != expectedVersion || current.Status != DefinitionDraft {
@@ -100,8 +100,8 @@ func (r *Repository) PublishDefinition(ctx context.Context, tenantID, id string,
 	if _, err := tx.ExecContext(ctx, insert, current.ID, revision, current.TenantID, current.ApplicationID, current.Key, current.Name, current.Description, current.NodesJSON, current.EdgesJSON, now, now, now, actor, actor); err != nil {
 		return Definition{}, fmt.Errorf("insert workflow definition revision: %w", err)
 	}
-	update := r.db.Rebind(`UPDATE workflow_definitions SET status='published',published_revision=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND tenant_id=? AND version=? AND status='draft'`)
-	result, err := tx.ExecContext(ctx, update, revision, now, actor, id, tenantID, expectedVersion)
+	update := r.db.Rebind(`UPDATE workflow_definitions SET status='published',published_revision=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND tenant_id=? AND application_id=? AND version=? AND status='draft'`)
+	result, err := tx.ExecContext(ctx, update, revision, now, actor, id, tenantID, applicationID, expectedVersion)
 	if err := affectedOne(result, err, "publish workflow definition"); err != nil {
 		return Definition{}, err
 	}
@@ -127,42 +127,42 @@ func (r *Repository) PublishDefinition(ctx context.Context, tenantID, id string,
 	return current, nil
 }
 
-func (r *Repository) DisableDefinition(ctx context.Context, tenantID, id string, expectedVersion int64, actor string) (Definition, error) {
+func (r *Repository) DisableDefinition(ctx context.Context, tenantID, applicationID, id string, expectedVersion int64, actor string) (Definition, error) {
 	now := r.now()
-	query := r.db.Rebind(`UPDATE workflow_definitions SET status='disabled',version=version+1,updated_at=?,updated_by=? WHERE id=? AND tenant_id=? AND version=? AND status='published'`)
-	result, err := r.db.ExecContext(ctx, query, now, actor, id, tenantID, expectedVersion)
+	query := r.db.Rebind(`UPDATE workflow_definitions SET status='disabled',version=version+1,updated_at=?,updated_by=? WHERE id=? AND tenant_id=? AND application_id=? AND version=? AND status='published'`)
+	result, err := r.db.ExecContext(ctx, query, now, actor, id, tenantID, applicationID, expectedVersion)
 	if err := affectedOne(result, err, "disable workflow definition"); err != nil {
 		return Definition{}, err
 	}
-	return r.GetDefinition(ctx, tenantID, id, 0)
+	return r.GetDefinition(ctx, tenantID, applicationID, id, 0)
 }
 
-func (r *Repository) GetDefinition(ctx context.Context, tenantID, id string, revision uint32) (Definition, error) {
+func (r *Repository) GetDefinition(ctx context.Context, tenantID, applicationID, id string, revision uint32) (Definition, error) {
 	var value Definition
 	if revision == 0 {
-		query := r.db.Rebind(`SELECT ` + definitionColumns + ` FROM workflow_definitions WHERE id=? AND tenant_id=?`)
-		if err := r.db.GetContext(ctx, &value, query, id, tenantID); err != nil {
+		query := r.db.Rebind(`SELECT ` + definitionColumns + ` FROM workflow_definitions WHERE id=? AND tenant_id=? AND application_id=?`)
+		if err := r.db.GetContext(ctx, &value, query, id, tenantID, applicationID); err != nil {
 			return Definition{}, mapNotFound(err, "select workflow definition")
 		}
 	} else {
-		query := r.db.Rebind(`SELECT definition_id AS id,tenant_id,application_id,definition_key,name,description,'published' AS status,revision AS published_revision,nodes_json,edges_json,version,created_at,updated_at,created_by,updated_by FROM workflow_definition_revisions WHERE definition_id=? AND tenant_id=? AND revision=?`)
-		if err := r.db.GetContext(ctx, &value, query, id, tenantID, revision); err != nil {
+		query := r.db.Rebind(`SELECT definition_id AS id,tenant_id,application_id,definition_key,name,description,'published' AS status,revision AS published_revision,nodes_json,edges_json,version,created_at,updated_at,created_by,updated_by FROM workflow_definition_revisions WHERE definition_id=? AND tenant_id=? AND application_id=? AND revision=?`)
+		if err := r.db.GetContext(ctx, &value, query, id, tenantID, applicationID, revision); err != nil {
 			return Definition{}, mapNotFound(err, "select workflow definition revision")
 		}
 	}
 	return hydrateDefinition(value)
 }
 
-func (r *Repository) GetPublishedDefinitionByKey(ctx context.Context, tenantID, key string) (Definition, error) {
+func (r *Repository) GetPublishedDefinitionByKey(ctx context.Context, tenantID, applicationID, key string) (Definition, error) {
 	var current struct {
 		ID       string `db:"id"`
 		Revision uint32 `db:"published_revision"`
 	}
-	query := r.db.Rebind(`SELECT id,published_revision FROM workflow_definitions WHERE tenant_id=? AND definition_key=? AND status='published'`)
-	if err := r.db.GetContext(ctx, &current, query, tenantID, key); err != nil {
+	query := r.db.Rebind(`SELECT id,published_revision FROM workflow_definitions WHERE tenant_id=? AND application_id=? AND definition_key=? AND status='published'`)
+	if err := r.db.GetContext(ctx, &current, query, tenantID, applicationID, key); err != nil {
 		return Definition{}, mapNotFound(err, "select published workflow definition")
 	}
-	return r.GetDefinition(ctx, tenantID, current.ID, current.Revision)
+	return r.GetDefinition(ctx, tenantID, applicationID, current.ID, current.Revision)
 }
 
 func (r *Repository) ListDefinitions(ctx context.Context, filter DefinitionFilter) (Page[Definition], error) {
@@ -190,10 +190,8 @@ func (r *Repository) ListDefinitions(ctx context.Context, filter DefinitionFilte
 func definitionWhere(filter DefinitionFilter) (string, []any) {
 	clauses := []string{"tenant_id=?"}
 	args := []any{filter.TenantID}
-	if filter.ApplicationID != "" {
-		clauses = append(clauses, "application_id=?")
-		args = append(args, filter.ApplicationID)
-	}
+	clauses = append(clauses, "application_id=?")
+	args = append(args, filter.ApplicationID)
 	if filter.Status != "" {
 		clauses = append(clauses, "status=?")
 		args = append(args, filter.Status)
@@ -212,8 +210,8 @@ func (r *Repository) CreateInstance(ctx context.Context, value Instance, definit
 		return Instance{}, fmt.Errorf("begin workflow instance creation: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	query := r.db.Rebind(`INSERT INTO workflow_instances (` + instanceColumns + `) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?,?,?)`)
-	if _, err := tx.ExecContext(ctx, query, value.ID, value.TenantID, value.DefinitionID, value.DefinitionRevision, value.BusinessKey, value.IdempotencyKey, value.Title, value.StarterID, value.Status, value.CurrentNodeID, value.VariablesJSON, value.ResultJSON, value.ErrorCode, value.ErrorMessage, value.TemporalWorkflowID, value.TemporalRunID, value.StartedAt, value.FinishedAt, value.CreatedAt, value.UpdatedAt, value.CreatedBy, value.UpdatedBy); err != nil {
+	query := r.db.Rebind(`INSERT INTO workflow_instances (` + instanceColumns + `) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?,?,?)`)
+	if _, err := tx.ExecContext(ctx, query, value.ID, value.TenantID, value.ApplicationID, value.DefinitionID, value.DefinitionRevision, value.BusinessKey, value.IdempotencyKey, value.Title, value.StarterID, value.Status, value.CurrentNodeID, value.VariablesJSON, value.ResultJSON, value.ErrorCode, value.ErrorMessage, value.TemporalWorkflowID, value.TemporalRunID, value.StartedAt, value.FinishedAt, value.CreatedAt, value.UpdatedAt, value.CreatedBy, value.UpdatedBy); err != nil {
 		return Instance{}, fmt.Errorf("insert workflow instance: %w", err)
 	}
 	event, err := r.events.InstanceStartRequested(ctx, value, definition)
@@ -229,28 +227,28 @@ func (r *Repository) CreateInstance(ctx context.Context, value Instance, definit
 	return value, nil
 }
 
-func (r *Repository) GetInstance(ctx context.Context, tenantID, id string) (Instance, error) {
+func (r *Repository) GetInstance(ctx context.Context, tenantID, applicationID, id string) (Instance, error) {
 	var value Instance
-	query := r.db.Rebind(`SELECT ` + instanceColumns + ` FROM workflow_instances WHERE id=? AND tenant_id=?`)
-	if err := r.db.GetContext(ctx, &value, query, id, tenantID); err != nil {
+	query := r.db.Rebind(`SELECT ` + instanceColumns + ` FROM workflow_instances WHERE id=? AND tenant_id=? AND application_id=?`)
+	if err := r.db.GetContext(ctx, &value, query, id, tenantID, applicationID); err != nil {
 		return Instance{}, mapNotFound(err, "select workflow instance")
 	}
 	return value, nil
 }
 
-func (r *Repository) CancelInstance(ctx context.Context, tenantID, id string, expectedVersion int64, reason, actor string) (Instance, error) {
+func (r *Repository) CancelInstance(ctx context.Context, tenantID, applicationID, id string, expectedVersion int64, reason, actor string) (Instance, error) {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return Instance{}, fmt.Errorf("begin workflow instance cancellation: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 	now := r.now()
-	query := r.db.Rebind(`UPDATE workflow_instances SET status='cancelled',error_message=?,finished_at=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND tenant_id=? AND version=? AND status='running'`)
-	result, err := tx.ExecContext(ctx, query, reason, now, now, actor, id, tenantID, expectedVersion)
+	query := r.db.Rebind(`UPDATE workflow_instances SET status='cancelled',error_message=?,finished_at=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND tenant_id=? AND application_id=? AND version=? AND status='running'`)
+	result, err := tx.ExecContext(ctx, query, reason, now, now, actor, id, tenantID, applicationID, expectedVersion)
 	if err := affectedOne(result, err, "cancel workflow instance"); err != nil {
 		return Instance{}, err
 	}
-	instance, err := getInstanceTx(ctx, tx, r.db.Rebind, tenantID, id)
+	instance, err := getInstanceTx(ctx, tx, r.db.Rebind, tenantID, applicationID, id)
 	if err != nil {
 		return Instance{}, err
 	}
@@ -283,8 +281,8 @@ func (r *Repository) ListInstances(ctx context.Context, filter InstanceFilter) (
 }
 
 func instanceWhere(filter InstanceFilter) (string, []any) {
-	clauses := []string{"tenant_id=?"}
-	args := []any{filter.TenantID}
+	clauses := []string{"tenant_id=?", "application_id=?"}
+	args := []any{filter.TenantID, filter.ApplicationID}
 	optional := []struct{ column, value string }{{"definition_id", filter.DefinitionID}, {"status", filter.Status}, {"starter_id", filter.StarterID}}
 	for _, item := range optional {
 		if item.value != "" {
@@ -308,10 +306,10 @@ func instanceWhere(filter InstanceFilter) (string, []any) {
 	return "WHERE " + strings.Join(clauses, " AND "), args
 }
 
-func (r *Repository) GetTask(ctx context.Context, tenantID, id string) (Task, error) {
+func (r *Repository) GetTask(ctx context.Context, tenantID, applicationID, id string) (Task, error) {
 	var value Task
-	query := r.db.Rebind(`SELECT ` + taskColumns + ` FROM workflow_tasks WHERE id=? AND tenant_id=?`)
-	if err := r.db.GetContext(ctx, &value, query, id, tenantID); err != nil {
+	query := r.db.Rebind(`SELECT ` + taskColumns + ` FROM workflow_tasks WHERE id=? AND tenant_id=? AND application_id=?`)
+	if err := r.db.GetContext(ctx, &value, query, id, tenantID, applicationID); err != nil {
 		return Task{}, mapNotFound(err, "select workflow task")
 	}
 	return value, nil
@@ -324,15 +322,15 @@ func (r *Repository) CreateTask(ctx context.Context, value Task) (Task, error) {
 	}
 	defer func() { _ = tx.Rollback() }()
 	var existing Task
-	lookup := r.db.Rebind(`SELECT ` + taskColumns + ` FROM workflow_tasks WHERE tenant_id=? AND instance_id=? AND node_id=?`)
-	if err := tx.GetContext(ctx, &existing, lookup, value.TenantID, value.InstanceID, value.NodeID); err == nil {
+	lookup := r.db.Rebind(`SELECT ` + taskColumns + ` FROM workflow_tasks WHERE tenant_id=? AND application_id=? AND instance_id=? AND node_id=?`)
+	if err := tx.GetContext(ctx, &existing, lookup, value.TenantID, value.ApplicationID, value.InstanceID, value.NodeID); err == nil {
 		return existing, nil
 	} else if !errors.Is(err, sql.ErrNoRows) {
 		return Task{}, fmt.Errorf("select existing workflow task: %w", err)
 	}
 	now := r.now()
-	advance := r.db.Rebind(`UPDATE workflow_instances SET current_node_id=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND tenant_id=? AND status='running' AND current_node_id<>?`)
-	result, err := tx.ExecContext(ctx, advance, value.NodeID, now, value.CreatedBy, value.InstanceID, value.TenantID, value.NodeID)
+	advance := r.db.Rebind(`UPDATE workflow_instances SET current_node_id=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND tenant_id=? AND application_id=? AND status='running' AND current_node_id<>?`)
+	result, err := tx.ExecContext(ctx, advance, value.NodeID, now, value.CreatedBy, value.InstanceID, value.TenantID, value.ApplicationID, value.NodeID)
 	if err != nil {
 		return Task{}, fmt.Errorf("advance workflow instance for task: %w", err)
 	}
@@ -345,16 +343,16 @@ func (r *Repository) CreateTask(ctx context.Context, value Task) (Task, error) {
 			NodeID string `db:"current_node_id"`
 			Status string `db:"status"`
 		}
-		stateQuery := r.db.Rebind(`SELECT current_node_id,status FROM workflow_instances WHERE id=? AND tenant_id=?`)
-		if err := tx.GetContext(ctx, &state, stateQuery, value.InstanceID, value.TenantID); err != nil {
+		stateQuery := r.db.Rebind(`SELECT current_node_id,status FROM workflow_instances WHERE id=? AND tenant_id=? AND application_id=?`)
+		if err := tx.GetContext(ctx, &state, stateQuery, value.InstanceID, value.TenantID, value.ApplicationID); err != nil {
 			return Task{}, mapNotFound(err, "select workflow instance for task")
 		}
 		if state.Status != InstanceRunning || state.NodeID != value.NodeID {
 			return Task{}, ErrConflict
 		}
 	}
-	query := r.db.Rebind(`INSERT INTO workflow_tasks (` + taskColumns + `) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?,?,?)`)
-	if _, err := tx.ExecContext(ctx, query, value.ID, value.TenantID, value.InstanceID, value.NodeID, value.Name, value.AssigneeType, value.Assignee, value.ClaimedBy, value.Status, value.Decision, value.Comment, value.InputJSON, value.OutputJSON, value.DueAt, value.CompletedAt, value.CreatedAt, value.UpdatedAt, value.CreatedBy, value.UpdatedBy); err != nil {
+	query := r.db.Rebind(`INSERT INTO workflow_tasks (` + taskColumns + `) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?,?,?)`)
+	if _, err := tx.ExecContext(ctx, query, value.ID, value.TenantID, value.ApplicationID, value.InstanceID, value.NodeID, value.Name, value.AssigneeType, value.Assignee, value.ClaimedBy, value.Status, value.Decision, value.Comment, value.InputJSON, value.OutputJSON, value.DueAt, value.CompletedAt, value.CreatedAt, value.UpdatedAt, value.CreatedBy, value.UpdatedBy); err != nil {
 		return Task{}, fmt.Errorf("insert workflow task: %w", err)
 	}
 	event, err := r.events.TaskCreated(ctx, value)
@@ -370,10 +368,10 @@ func (r *Repository) CreateTask(ctx context.Context, value Task) (Task, error) {
 	return value, nil
 }
 
-func (r *Repository) UpdateInstanceNode(ctx context.Context, tenantID, id, nodeID, actor string) error {
+func (r *Repository) UpdateInstanceNode(ctx context.Context, tenantID, applicationID, id, nodeID, actor string) error {
 	now := r.now()
-	query := r.db.Rebind(`UPDATE workflow_instances SET current_node_id=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND tenant_id=? AND status='running' AND current_node_id<>?`)
-	result, err := r.db.ExecContext(ctx, query, nodeID, now, actor, id, tenantID, nodeID)
+	query := r.db.Rebind(`UPDATE workflow_instances SET current_node_id=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND tenant_id=? AND application_id=? AND status='running' AND current_node_id<>?`)
+	result, err := r.db.ExecContext(ctx, query, nodeID, now, actor, id, tenantID, applicationID, nodeID)
 	if err != nil {
 		return fmt.Errorf("advance workflow instance node: %w", err)
 	}
@@ -384,7 +382,7 @@ func (r *Repository) UpdateInstanceNode(ctx context.Context, tenantID, id, nodeI
 	if count == 1 {
 		return nil
 	}
-	current, err := r.GetInstance(ctx, tenantID, id)
+	current, err := r.GetInstance(ctx, tenantID, applicationID, id)
 	if err != nil {
 		return err
 	}
@@ -394,30 +392,30 @@ func (r *Repository) UpdateInstanceNode(ctx context.Context, tenantID, id, nodeI
 	return ErrConflict
 }
 
-func (r *Repository) FinishInstance(ctx context.Context, tenantID, id, status, resultJSON, errorMessage, actor string) (Instance, error) {
+func (r *Repository) FinishInstance(ctx context.Context, tenantID, applicationID, id, status, resultJSON, errorMessage, actor string) (Instance, error) {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return Instance{}, fmt.Errorf("begin workflow instance finish: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 	var previous string
-	lookup := r.db.Rebind(`SELECT status FROM workflow_instances WHERE id=? AND tenant_id=? FOR UPDATE`)
-	if err := tx.GetContext(ctx, &previous, lookup, id, tenantID); err != nil {
+	lookup := r.db.Rebind(`SELECT status FROM workflow_instances WHERE id=? AND tenant_id=? AND application_id=? FOR UPDATE`)
+	if err := tx.GetContext(ctx, &previous, lookup, id, tenantID, applicationID); err != nil {
 		return Instance{}, mapNotFound(err, "select workflow instance status")
 	}
 	if previous == status {
-		return getInstanceTx(ctx, tx, r.db.Rebind, tenantID, id)
+		return getInstanceTx(ctx, tx, r.db.Rebind, tenantID, applicationID, id)
 	}
 	if previous != InstanceRunning {
 		return Instance{}, ErrConflict
 	}
 	now := r.now()
-	query := r.db.Rebind(`UPDATE workflow_instances SET status=?,result_json=?,error_message=?,finished_at=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND tenant_id=? AND status='running'`)
-	result, err := tx.ExecContext(ctx, query, status, resultJSON, errorMessage, now, now, actor, id, tenantID)
+	query := r.db.Rebind(`UPDATE workflow_instances SET status=?,result_json=?,error_message=?,finished_at=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND tenant_id=? AND application_id=? AND status='running'`)
+	result, err := tx.ExecContext(ctx, query, status, resultJSON, errorMessage, now, now, actor, id, tenantID, applicationID)
 	if err := affectedOne(result, err, "finish workflow instance"); err != nil {
 		return Instance{}, err
 	}
-	instance, err := getInstanceTx(ctx, tx, r.db.Rebind, tenantID, id)
+	instance, err := getInstanceTx(ctx, tx, r.db.Rebind, tenantID, applicationID, id)
 	if err != nil {
 		return Instance{}, err
 	}
@@ -434,14 +432,14 @@ func (r *Repository) FinishInstance(ctx context.Context, tenantID, id, status, r
 	return instance, nil
 }
 
-func (r *Repository) ClaimTask(ctx context.Context, tenantID, id string, expectedVersion int64, actor string) (Task, error) {
+func (r *Repository) ClaimTask(ctx context.Context, tenantID, applicationID, id string, expectedVersion int64, actor string) (Task, error) {
 	now := r.now()
-	query := r.db.Rebind(`UPDATE workflow_tasks SET status='claimed',claimed_by=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND tenant_id=? AND version=? AND status='pending'`)
-	result, err := r.db.ExecContext(ctx, query, actor, now, actor, id, tenantID, expectedVersion)
+	query := r.db.Rebind(`UPDATE workflow_tasks SET status='claimed',claimed_by=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND tenant_id=? AND application_id=? AND version=? AND status='pending'`)
+	result, err := r.db.ExecContext(ctx, query, actor, now, actor, id, tenantID, applicationID, expectedVersion)
 	if err := affectedOne(result, err, "claim workflow task"); err != nil {
 		return Task{}, err
 	}
-	return r.GetTask(ctx, tenantID, id)
+	return r.GetTask(ctx, tenantID, applicationID, id)
 }
 
 func (r *Repository) CompleteTask(ctx context.Context, current Task, decision, comment, outputJSON, actor string) (Task, error) {
@@ -464,11 +462,11 @@ func (r *Repository) CompleteTask(ctx context.Context, current Task, decision, c
 	if err != nil {
 		return Task{}, fmt.Errorf("encode workflow task history: %w", err)
 	}
-	history := r.db.Rebind(`INSERT INTO workflow_task_history (id,tenant_id,task_id,instance_id,action,actor_id,from_status,to_status,detail_json,version,created_at,updated_at,created_by,updated_by) VALUES (?,?,?,?,?,?,?,?,?,1,?,?,?,?)`)
-	if _, err := tx.ExecContext(ctx, history, newRepositoryID(), current.TenantID, current.ID, current.InstanceID, "complete", actor, current.Status, status, string(detail), now, now, actor, actor); err != nil {
+	history := r.db.Rebind(`INSERT INTO workflow_task_history (id,tenant_id,application_id,task_id,instance_id,action,actor_id,from_status,to_status,detail_json,version,created_at,updated_at,created_by,updated_by) VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?,?,?)`)
+	if _, err := tx.ExecContext(ctx, history, newRepositoryID(), current.TenantID, current.ApplicationID, current.ID, current.InstanceID, "complete", actor, current.Status, status, string(detail), now, now, actor, actor); err != nil {
 		return Task{}, fmt.Errorf("insert workflow task history: %w", err)
 	}
-	completed, err := getTaskTx(ctx, tx, r.db.Rebind, current.TenantID, current.ID)
+	completed, err := getTaskTx(ctx, tx, r.db.Rebind, current.TenantID, current.ApplicationID, current.ID)
 	if err != nil {
 		return Task{}, err
 	}
@@ -501,14 +499,14 @@ func (r *Repository) DelegateTask(ctx context.Context, current Task, delegateTo,
 	if err != nil {
 		return Task{}, fmt.Errorf("encode workflow task delegation history: %w", err)
 	}
-	history := r.db.Rebind(`INSERT INTO workflow_task_history (id,tenant_id,task_id,instance_id,action,actor_id,from_status,to_status,detail_json,version,created_at,updated_at,created_by,updated_by) VALUES (?,?,?,?,?,?,?,?,?,1,?,?,?,?)`)
-	if _, err := tx.ExecContext(ctx, history, newRepositoryID(), current.TenantID, current.ID, current.InstanceID, "delegate", actor, current.Status, TaskPending, string(detail), now, now, actor, actor); err != nil {
+	history := r.db.Rebind(`INSERT INTO workflow_task_history (id,tenant_id,application_id,task_id,instance_id,action,actor_id,from_status,to_status,detail_json,version,created_at,updated_at,created_by,updated_by) VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?,?,?)`)
+	if _, err := tx.ExecContext(ctx, history, newRepositoryID(), current.TenantID, current.ApplicationID, current.ID, current.InstanceID, "delegate", actor, current.Status, TaskPending, string(detail), now, now, actor, actor); err != nil {
 		return Task{}, fmt.Errorf("insert workflow task delegation history: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
 		return Task{}, fmt.Errorf("commit workflow task delegation: %w", err)
 	}
-	return r.GetTask(ctx, current.TenantID, current.ID)
+	return r.GetTask(ctx, current.TenantID, current.ApplicationID, current.ID)
 }
 
 func (r *Repository) ListTasks(ctx context.Context, filter TaskFilter) (Page[Task], error) {
@@ -530,8 +528,8 @@ func (r *Repository) ListTasks(ctx context.Context, filter TaskFilter) (Page[Tas
 }
 
 func taskWhere(filter TaskFilter) (string, []any, error) {
-	clauses := []string{"tenant_id=?"}
-	args := []any{filter.TenantID}
+	clauses := []string{"tenant_id=?", "application_id=?"}
+	args := []any{filter.TenantID, filter.ApplicationID}
 	if filter.InstanceID != "" {
 		clauses = append(clauses, "instance_id=?")
 		args = append(args, filter.InstanceID)
@@ -575,19 +573,19 @@ func hydrateDefinition(value Definition) (Definition, error) {
 	return value, nil
 }
 
-func getInstanceTx(ctx context.Context, tx *sqlx.Tx, rebind func(string) string, tenantID, id string) (Instance, error) {
+func getInstanceTx(ctx context.Context, tx *sqlx.Tx, rebind func(string) string, tenantID, applicationID, id string) (Instance, error) {
 	var value Instance
-	query := rebind(`SELECT ` + instanceColumns + ` FROM workflow_instances WHERE id=? AND tenant_id=?`)
-	if err := tx.GetContext(ctx, &value, query, id, tenantID); err != nil {
+	query := rebind(`SELECT ` + instanceColumns + ` FROM workflow_instances WHERE id=? AND tenant_id=? AND application_id=?`)
+	if err := tx.GetContext(ctx, &value, query, id, tenantID, applicationID); err != nil {
 		return Instance{}, mapNotFound(err, "select workflow instance in transaction")
 	}
 	return value, nil
 }
 
-func getTaskTx(ctx context.Context, tx *sqlx.Tx, rebind func(string) string, tenantID, id string) (Task, error) {
+func getTaskTx(ctx context.Context, tx *sqlx.Tx, rebind func(string) string, tenantID, applicationID, id string) (Task, error) {
 	var value Task
-	query := rebind(`SELECT ` + taskColumns + ` FROM workflow_tasks WHERE id=? AND tenant_id=?`)
-	if err := tx.GetContext(ctx, &value, query, id, tenantID); err != nil {
+	query := rebind(`SELECT ` + taskColumns + ` FROM workflow_tasks WHERE id=? AND tenant_id=? AND application_id=?`)
+	if err := tx.GetContext(ctx, &value, query, id, tenantID, applicationID); err != nil {
 		return Task{}, mapNotFound(err, "select workflow task in transaction")
 	}
 	return value, nil

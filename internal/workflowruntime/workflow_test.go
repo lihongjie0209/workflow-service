@@ -19,7 +19,7 @@ func TestExecuteApprovalCompletesAfterSignal(t *testing.T) {
 	environment.RegisterDelayedCallback(func() {
 		environment.SignalWorkflow(TaskCompletedSignal, TaskSignal{TaskID: "task-1", NodeID: "approval", Decision: domain.DecisionApprove, OutputJSON: `{"approved":true}`})
 	}, time.Second)
-	input := Input{InstanceID: "instance-1", TenantID: "tenant-1", StarterID: "user-1", VariablesJSON: "{}",
+	input := Input{InstanceID: "instance-1", TenantID: "tenant-1", ApplicationID: "app-1", StarterID: "user-1", VariablesJSON: "{}",
 		Nodes: []domain.Node{{ID: "start", Type: domain.NodeStart}, {ID: "approval", Type: domain.NodeApproval, TimeoutSeconds: 60}, {ID: "end", Type: domain.NodeEnd}},
 		Edges: []domain.Edge{{FromNodeID: "start", ToNodeID: "approval"}, {FromNodeID: "approval", ToNodeID: "end"}},
 	}
@@ -48,7 +48,7 @@ func TestExecuteRejectsApprovalWithoutCallingFollowingService(t *testing.T) {
 	environment.RegisterDelayedCallback(func() {
 		environment.SignalWorkflow(TaskCompletedSignal, TaskSignal{NodeID: "approval", Decision: domain.DecisionReject})
 	}, time.Second)
-	input := Input{InstanceID: "instance-1", TenantID: "tenant-1", VariablesJSON: "{}",
+	input := Input{InstanceID: "instance-1", TenantID: "tenant-1", ApplicationID: "app-1", VariablesJSON: "{}",
 		Nodes: []domain.Node{{ID: "start", Type: domain.NodeStart}, {ID: "approval", Type: domain.NodeApproval, TimeoutSeconds: 60}, {ID: "invoke", Type: domain.NodeServiceTask}, {ID: "end", Type: domain.NodeEnd}},
 		Edges: []domain.Edge{{FromNodeID: "start", ToNodeID: "approval"}, {FromNodeID: "approval", ToNodeID: "invoke"}, {FromNodeID: "invoke", ToNodeID: "end"}},
 	}
@@ -72,7 +72,7 @@ func TestExecuteCompensatesCompletedServiceTasksInReverseOrder(t *testing.T) {
 
 	environment, activities := newEnvironment(t)
 	activities.failNode = "third"
-	input := Input{InstanceID: "instance-1", TenantID: "tenant-1", VariablesJSON: "{}",
+	input := Input{InstanceID: "instance-1", TenantID: "tenant-1", ApplicationID: "app-1", VariablesJSON: "{}",
 		Nodes: []domain.Node{
 			{ID: "start", Type: domain.NodeStart},
 			{ID: "first", Type: domain.NodeServiceTask, CompensationMethod: "/platform.test.v1.Service/UndoFirst"},

@@ -98,6 +98,7 @@ type DefinitionRevision struct {
 type Instance struct {
 	ID                 string     `db:"id"`
 	TenantID           string     `db:"tenant_id"`
+	ApplicationID      string     `db:"application_id"`
 	DefinitionID       string     `db:"definition_id"`
 	DefinitionRevision uint32     `db:"definition_revision"`
 	BusinessKey        string     `db:"business_key"`
@@ -122,26 +123,27 @@ type Instance struct {
 }
 
 type Task struct {
-	ID           string     `db:"id"`
-	TenantID     string     `db:"tenant_id"`
-	InstanceID   string     `db:"instance_id"`
-	NodeID       string     `db:"node_id"`
-	Name         string     `db:"name"`
-	AssigneeType string     `db:"assignee_type"`
-	Assignee     string     `db:"assignee"`
-	ClaimedBy    string     `db:"claimed_by"`
-	Status       string     `db:"status"`
-	Decision     string     `db:"decision"`
-	Comment      string     `db:"comment"`
-	InputJSON    string     `db:"input_json"`
-	OutputJSON   string     `db:"output_json"`
-	DueAt        *time.Time `db:"due_at"`
-	CompletedAt  *time.Time `db:"completed_at"`
-	Version      int64      `db:"version"`
-	CreatedAt    time.Time  `db:"created_at"`
-	UpdatedAt    time.Time  `db:"updated_at"`
-	CreatedBy    string     `db:"created_by"`
-	UpdatedBy    string     `db:"updated_by"`
+	ID            string     `db:"id"`
+	TenantID      string     `db:"tenant_id"`
+	ApplicationID string     `db:"application_id"`
+	InstanceID    string     `db:"instance_id"`
+	NodeID        string     `db:"node_id"`
+	Name          string     `db:"name"`
+	AssigneeType  string     `db:"assignee_type"`
+	Assignee      string     `db:"assignee"`
+	ClaimedBy     string     `db:"claimed_by"`
+	Status        string     `db:"status"`
+	Decision      string     `db:"decision"`
+	Comment       string     `db:"comment"`
+	InputJSON     string     `db:"input_json"`
+	OutputJSON    string     `db:"output_json"`
+	DueAt         *time.Time `db:"due_at"`
+	CompletedAt   *time.Time `db:"completed_at"`
+	Version       int64      `db:"version"`
+	CreatedAt     time.Time  `db:"created_at"`
+	UpdatedAt     time.Time  `db:"updated_at"`
+	CreatedBy     string     `db:"created_by"`
+	UpdatedBy     string     `db:"updated_by"`
 }
 
 type Page[T any] struct {
@@ -157,14 +159,14 @@ type DefinitionFilter struct {
 }
 
 type InstanceFilter struct {
-	TenantID, DefinitionID, Status, StarterID, Search string
-	StartedFrom, StartedUntil                         *time.Time
-	Page, PageSize                                    int
+	TenantID, ApplicationID, DefinitionID, Status, StarterID, Search string
+	StartedFrom, StartedUntil                                        *time.Time
+	Page, PageSize                                                   int
 }
 
 type TaskFilter struct {
-	TenantID, InstanceID, Status, AssigneeUserID, Search string
-	RoleIDs                                              []string
-	IncludeUnclaimed                                     bool
-	Page, PageSize                                       int
+	TenantID, ApplicationID, InstanceID, Status, AssigneeUserID, Search string
+	RoleIDs                                                             []string
+	IncludeUnclaimed                                                    bool
+	Page, PageSize                                                      int
 }

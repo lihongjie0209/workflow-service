@@ -34,3 +34,17 @@ outbound:
         open_timeout: 30s
       tls:
         enabled: false
+    application:
+      target: application-service:9090
+      timeout: 5s
+      retry:
+        max_attempts: 3
+        initial_backoff: 100ms
+        max_backoff: 1s
+        methods: [/platform.application.v1.ApplicationService/BatchCheckTenantApplications]
+      breaker:
+        enabled: true
+        failure_threshold: 5
+        open_timeout: 30s
+      tls:
+        enabled: false
