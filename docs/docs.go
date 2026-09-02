@@ -1024,7 +1024,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/httptransport.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httptransport.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "body": {
+                                            "$ref": "#/definitions/httptransport.CompleteTaskResponseBody"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -1491,6 +1503,17 @@ const docTemplate = `{
                 },
                 "tenant_id": {
                     "type": "string"
+                }
+            }
+        },
+        "httptransport.CompleteTaskResponseBody": {
+            "type": "object",
+            "properties": {
+                "instance": {
+                    "$ref": "#/definitions/httptransport.InstanceDTO"
+                },
+                "task": {
+                    "$ref": "#/definitions/httptransport.TaskDTO"
                 }
             }
         },

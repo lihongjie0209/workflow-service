@@ -101,6 +101,10 @@ type PageDTO[T any] struct {
 	Page     int   `json:"page"`
 	PageSize int   `json:"page_size"`
 }
+type CompleteTaskResponseBody struct {
+	Task     TaskDTO     `json:"task"`
+	Instance InstanceDTO `json:"instance"`
+}
 
 type CreateDefinitionRequest struct {
 	TenantID      string            `json:"tenant_id" binding:"required"`
@@ -436,7 +440,7 @@ func (h *Handler) ClaimTask(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param request body CompleteTaskRequest true "Decision and current version"
-// @Success 200 {object} Response
+// @Success 200 {object} Response{body=CompleteTaskResponseBody}
 // @Failure 400,401,403,404,409,500 {object} Response
 // @Router /api/v1/workflow/tasks/complete [post]
 func (h *Handler) CompleteTask(c *gin.Context) {
@@ -445,7 +449,7 @@ func (h *Handler) CompleteTask(c *gin.Context) {
 		return
 	}
 	task, instance, err := h.workflow.CompleteTask(c.Request.Context(), request.TenantID, request.ApplicationID, request.ID, request.Decision, request.Comment, string(rawObject(request.OutputJSON)), request.ExpectedVersion)
-	respond(c, h, gin.H{"task": taskDTO(task), "instance": instanceDTO(instance)}, err)
+	respond(c, h, CompleteTaskResponseBody{Task: taskDTO(task), Instance: instanceDTO(instance)}, err)
 }
 
 // DelegateTask godoc

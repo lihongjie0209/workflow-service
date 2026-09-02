@@ -71,6 +71,13 @@ definitions:
     - id
     - tenant_id
     type: object
+  httptransport.CompleteTaskResponseBody:
+    properties:
+      instance:
+        $ref: '#/definitions/httptransport.InstanceDTO'
+      task:
+        $ref: '#/definitions/httptransport.TaskDTO'
+    type: object
   httptransport.CreateDefinitionRequest:
     properties:
       application_id:
@@ -1147,7 +1154,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/httptransport.Response'
+            allOf:
+            - $ref: '#/definitions/httptransport.Response'
+            - properties:
+                body:
+                  $ref: '#/definitions/httptransport.CompleteTaskResponseBody'
+              type: object
         "400":
           description: Bad Request
           schema:
