@@ -58,6 +58,42 @@ func TestLoad_EnvironmentOverridesFile(t *testing.T) {
 	}
 }
 
+func TestConfig_OutboundPSKRequiresTLSOrExplicitDevelopmentOptIn(t *testing.T) {
+	cfg, err := Load("../../config/config.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	application := cfg.Outbound.GRPC["application"]
+	application.Auth = ClientAuth{Type: "psk", Token: strings.Repeat("p", 32)}
+	cfg.Outbound.GRPC["application"] = application
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "TLS or explicit allow_insecure") {
+		t.Fatalf("Validate() error = %v", err)
+	}
+	application.TLS.AllowInsecure = true
+	cfg.Outbound.GRPC["application"] = application
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate() with development opt-in error = %v", err)
+	}
+	cfg.App.Env = "production"
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "production") {
+		t.Fatalf("production Validate() error = %v", err)
+	}
+}
+
+func TestLoadMapsApplicationAllowInsecureEnvironmentOverride(t *testing.T) {
+	t.Setenv("APP_OUTBOUND_GRPC_APPLICATION_AUTH_TYPE", "psk")
+	t.Setenv("APP_OUTBOUND_GRPC_APPLICATION_AUTH_TOKEN", strings.Repeat("p", 32))
+	t.Setenv("APP_OUTBOUND_GRPC_APPLICATION_TLS_ALLOW_INSECURE", "true")
+
+	cfg, err := Load("../../config/config.yaml")
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if !cfg.Outbound.GRPC["application"].TLS.AllowInsecure {
+		t.Fatal("outbound application allow_insecure environment override was not decoded")
+	}
+}
+
 func TestLoad_WorkflowRetentionEnvironmentOverrides(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.yaml")
 	if err := os.WriteFile(path, []byte("http:\n  address: 127.0.0.1:8080\n"), 0o600); err != nil {
@@ -138,6 +174,7 @@ func TestLoadWithProfile_ProductionDependencies(t *testing.T) {
 	t.Setenv("APP_GRPC_TLS_KEY_FILE", "/etc/workflow-service/tls/tls.key")
 	t.Setenv("APP_TEMPORAL_HOST_PORT", "temporal:7233")
 	t.Setenv("APP_OUTBOUND_GRPC_AUTHORIZATION_TARGET", "dns:///authorization-service.platform-production.svc.cluster.local:9090")
+	t.Setenv("APP_OUTBOUND_GRPC_APPLICATION_AUTH_TOKEN", strings.Repeat("p", 32))
 
 	cfg, err := LoadWithProfile(filepath.Join("..", "..", "config", "config.yaml"), "production")
 	if err != nil {
