@@ -105,6 +105,26 @@ migration:
 
 idempotency:
   enabled: false
+  http_paths:
+    - /api/v1/workflow/definitions/create
+    - /api/v1/workflow/definitions/update
+    - /api/v1/workflow/definitions/publish
+    - /api/v1/workflow/definitions/disable
+    - /api/v1/workflow/instances/start
+    - /api/v1/workflow/instances/cancel
+    - /api/v1/workflow/tasks/claim
+    - /api/v1/workflow/tasks/complete
+    - /api/v1/workflow/tasks/delegate
+  grpc_methods:
+    - /platform.workflow.v1.WorkflowService/CreateDefinition
+    - /platform.workflow.v1.WorkflowService/UpdateDefinition
+    - /platform.workflow.v1.WorkflowService/PublishDefinition
+    - /platform.workflow.v1.WorkflowService/DisableDefinition
+    - /platform.workflow.v1.WorkflowService/StartInstance
+    - /platform.workflow.v1.WorkflowService/CancelInstance
+    - /platform.workflow.v1.WorkflowService/ClaimTask
+    - /platform.workflow.v1.WorkflowService/CompleteTask
+    - /platform.workflow.v1.WorkflowService/DelegateTask
   processing_ttl: 30s
   result_ttl: 24h
   failure_ttl: 5m
