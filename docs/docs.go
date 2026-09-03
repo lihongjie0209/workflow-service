@@ -906,6 +906,86 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/workflow/instances/task-history/list": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workflow-instances"
+                ],
+                "summary": "List task audit history for one workflow instance",
+                "parameters": [
+                    {
+                        "description": "Instance identity and pagination",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httptransport.ListInstanceTaskHistoryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httptransport.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "body": {
+                                            "$ref": "#/definitions/httptransport.PageDTO-httptransport_TaskHistoryDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httptransport.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httptransport.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httptransport.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httptransport.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httptransport.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/workflow/tasks/claim": {
             "post": {
                 "security": [
@@ -1260,10 +1340,10 @@ const docTemplate = `{
                 "tags": [
                     "workflow-tasks"
                 ],
-                "summary": "List the audit history for one task or workflow instance",
+                "summary": "List the audit history for one task",
                 "parameters": [
                     {
-                        "description": "Task or instance identity and pagination",
+                        "description": "Task identity and pagination",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -1878,6 +1958,31 @@ const docTemplate = `{
                 }
             }
         },
+        "httptransport.ListInstanceTaskHistoryRequest": {
+            "type": "object",
+            "required": [
+                "application_id",
+                "instance_id",
+                "tenant_id"
+            ],
+            "properties": {
+                "application_id": {
+                    "type": "string"
+                },
+                "instance_id": {
+                    "type": "string"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "tenant_id": {
+                    "type": "string"
+                }
+            }
+        },
         "httptransport.ListInstancesRequest": {
             "type": "object",
             "required": [
@@ -1921,13 +2026,11 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "application_id",
+                "task_id",
                 "tenant_id"
             ],
             "properties": {
                 "application_id": {
-                    "type": "string"
-                },
-                "instance_id": {
                     "type": "string"
                 },
                 "page": {

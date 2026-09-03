@@ -17,7 +17,7 @@ import (
 func TestWorkflowGRPCRequirementCoversEveryBusinessMethod(t *testing.T) {
 	t.Parallel()
 	resolve := workflowGRPCRequirement(true)
-	methods := []string{workflowv1.WorkflowService_CreateDefinition_FullMethodName, workflowv1.WorkflowService_UpdateDefinition_FullMethodName, workflowv1.WorkflowService_PublishDefinition_FullMethodName, workflowv1.WorkflowService_DisableDefinition_FullMethodName, workflowv1.WorkflowService_GetDefinition_FullMethodName, workflowv1.WorkflowService_ListDefinitions_FullMethodName, workflowv1.WorkflowService_StartInstance_FullMethodName, workflowv1.WorkflowService_CancelInstance_FullMethodName, workflowv1.WorkflowService_GetInstance_FullMethodName, workflowv1.WorkflowService_ListInstances_FullMethodName, workflowv1.WorkflowService_ClaimTask_FullMethodName, workflowv1.WorkflowService_CompleteTask_FullMethodName, workflowv1.WorkflowService_DelegateTask_FullMethodName, workflowv1.WorkflowService_GetTask_FullMethodName, workflowv1.WorkflowService_ListTasks_FullMethodName, workflowv1.WorkflowService_ListTaskHistory_FullMethodName}
+	methods := []string{workflowv1.WorkflowService_CreateDefinition_FullMethodName, workflowv1.WorkflowService_UpdateDefinition_FullMethodName, workflowv1.WorkflowService_PublishDefinition_FullMethodName, workflowv1.WorkflowService_DisableDefinition_FullMethodName, workflowv1.WorkflowService_GetDefinition_FullMethodName, workflowv1.WorkflowService_ListDefinitions_FullMethodName, workflowv1.WorkflowService_StartInstance_FullMethodName, workflowv1.WorkflowService_CancelInstance_FullMethodName, workflowv1.WorkflowService_GetInstance_FullMethodName, workflowv1.WorkflowService_ListInstances_FullMethodName, workflowv1.WorkflowService_ClaimTask_FullMethodName, workflowv1.WorkflowService_CompleteTask_FullMethodName, workflowv1.WorkflowService_DelegateTask_FullMethodName, workflowv1.WorkflowService_GetTask_FullMethodName, workflowv1.WorkflowService_ListTasks_FullMethodName, workflowv1.WorkflowService_ListTaskHistory_FullMethodName, workflowv1.WorkflowService_ListInstanceTaskHistory_FullMethodName}
 	for _, method := range methods {
 		requirement, ok := resolve(method)
 		if !ok || requirement.Resource == "" || requirement.Action == "" || requirement.Scope != platformauthz.ScopePrincipal {
@@ -26,6 +26,19 @@ func TestWorkflowGRPCRequirementCoversEveryBusinessMethod(t *testing.T) {
 	}
 	if _, ok := workflowGRPCRequirement(false)(workflowv1.WorkflowService_ListTasks_FullMethodName); ok {
 		t.Fatal("disabled authorization must not enforce")
+	}
+}
+
+func TestWorkflowHistoryGRPCRequirementsUseDistinctResources(t *testing.T) {
+	t.Parallel()
+	resolve := workflowGRPCRequirement(true)
+	task, taskOK := resolve(workflowv1.WorkflowService_ListTaskHistory_FullMethodName)
+	instance, instanceOK := resolve(workflowv1.WorkflowService_ListInstanceTaskHistory_FullMethodName)
+	if !taskOK || task.Resource != "workflow.task" || task.Action != "read" {
+		t.Fatalf("task history requirement = %+v, %v", task, taskOK)
+	}
+	if !instanceOK || instance.Resource != "workflow.instance" || instance.Action != "read" {
+		t.Fatalf("instance history requirement = %+v, %v", instance, instanceOK)
 	}
 }
 

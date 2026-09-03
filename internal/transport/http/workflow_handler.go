@@ -235,8 +235,14 @@ type ListTasksRequest struct {
 type ListTaskHistoryRequest struct {
 	TenantID      string `json:"tenant_id" binding:"required"`
 	ApplicationID string `json:"application_id" binding:"required"`
-	TaskID        string `json:"task_id"`
-	InstanceID    string `json:"instance_id"`
+	TaskID        string `json:"task_id" binding:"required"`
+	Page          int    `json:"page"`
+	PageSize      int    `json:"page_size"`
+}
+type ListInstanceTaskHistoryRequest struct {
+	TenantID      string `json:"tenant_id" binding:"required"`
+	ApplicationID string `json:"application_id" binding:"required"`
+	InstanceID    string `json:"instance_id" binding:"required"`
 	Page          int    `json:"page"`
 	PageSize      int    `json:"page_size"`
 }
@@ -540,12 +546,12 @@ func (h *Handler) ListTasks(c *gin.Context) {
 }
 
 // ListTaskHistory godoc
-// @Summary List the audit history for one task or workflow instance
+// @Summary List the audit history for one task
 // @Tags workflow-tasks
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param request body ListTaskHistoryRequest true "Task or instance identity and pagination"
+// @Param request body ListTaskHistoryRequest true "Task identity and pagination"
 // @Success 200 {object} Response{body=PageDTO[TaskHistoryDTO]}
 // @Failure 400,401,403,404,500 {object} Response
 // @Router /api/v1/workflow/tasks/history/list [post]
@@ -554,7 +560,30 @@ func (h *Handler) ListTaskHistory(c *gin.Context) {
 	if !bind(c, h, &request) {
 		return
 	}
-	value, err := h.workflow.ListTaskHistory(c.Request.Context(), workflow.TaskHistoryFilter{TenantID: request.TenantID, ApplicationID: request.ApplicationID, TaskID: request.TaskID, InstanceID: request.InstanceID, Page: request.Page, PageSize: request.PageSize})
+	value, err := h.workflow.ListTaskHistory(c.Request.Context(), workflow.TaskHistoryFilter{TenantID: request.TenantID, ApplicationID: request.ApplicationID, TaskID: request.TaskID, Page: request.Page, PageSize: request.PageSize})
+	respondTaskHistory(c, h, value, err)
+}
+
+// ListInstanceTaskHistory godoc
+// @Summary List task audit history for one workflow instance
+// @Tags workflow-instances
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param request body ListInstanceTaskHistoryRequest true "Instance identity and pagination"
+// @Success 200 {object} Response{body=PageDTO[TaskHistoryDTO]}
+// @Failure 400,401,403,404,500 {object} Response
+// @Router /api/v1/workflow/instances/task-history/list [post]
+func (h *Handler) ListInstanceTaskHistory(c *gin.Context) {
+	var request ListInstanceTaskHistoryRequest
+	if !bind(c, h, &request) {
+		return
+	}
+	value, err := h.workflow.ListTaskHistory(c.Request.Context(), workflow.TaskHistoryFilter{TenantID: request.TenantID, ApplicationID: request.ApplicationID, InstanceID: request.InstanceID, Page: request.Page, PageSize: request.PageSize})
+	respondTaskHistory(c, h, value, err)
+}
+
+func respondTaskHistory(c *gin.Context, h *Handler, value workflow.Page[workflow.TaskHistory], err error) {
 	items := make([]TaskHistoryDTO, 0, len(value.Items))
 	for _, item := range value.Items {
 		items = append(items, taskHistoryDTO(item))

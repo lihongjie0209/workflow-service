@@ -162,7 +162,7 @@ func (s *workflowServer) ListTasks(ctx context.Context, request *workflowv1.List
 
 func (s *workflowServer) ListTaskHistory(ctx context.Context, request *workflowv1.ListTaskHistoryRequest) (*workflowv1.ListTaskHistoryResponse, error) {
 	page, size := pageFromProto(request.GetPage())
-	values, err := s.service.ListTaskHistory(ctx, workflow.TaskHistoryFilter{TenantID: request.GetTenantId(), ApplicationID: request.GetApplicationId(), TaskID: request.GetTaskId(), InstanceID: request.GetInstanceId(), Page: page, PageSize: size})
+	values, err := s.service.ListTaskHistory(ctx, workflow.TaskHistoryFilter{TenantID: request.GetTenantId(), ApplicationID: request.GetApplicationId(), TaskID: request.GetTaskId(), Page: page, PageSize: size})
 	if err != nil {
 		return nil, grpcError(err)
 	}
@@ -171,6 +171,19 @@ func (s *workflowServer) ListTaskHistory(ctx context.Context, request *workflowv
 		items = append(items, taskHistoryToProto(value))
 	}
 	return &workflowv1.ListTaskHistoryResponse{Items: items, Page: pageToProto(values.Total, values.Page, values.PageSize)}, nil
+}
+
+func (s *workflowServer) ListInstanceTaskHistory(ctx context.Context, request *workflowv1.ListInstanceTaskHistoryRequest) (*workflowv1.ListInstanceTaskHistoryResponse, error) {
+	page, size := pageFromProto(request.GetPage())
+	values, err := s.service.ListTaskHistory(ctx, workflow.TaskHistoryFilter{TenantID: request.GetTenantId(), ApplicationID: request.GetApplicationId(), InstanceID: request.GetInstanceId(), Page: page, PageSize: size})
+	if err != nil {
+		return nil, grpcError(err)
+	}
+	items := make([]*workflowv1.WorkflowTaskHistory, 0, len(values.Items))
+	for _, value := range values.Items {
+		items = append(items, taskHistoryToProto(value))
+	}
+	return &workflowv1.ListInstanceTaskHistoryResponse{Items: items, Page: pageToProto(values.Total, values.Page, values.PageSize)}, nil
 }
 
 func grpcError(err error) error {

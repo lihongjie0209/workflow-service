@@ -268,6 +268,23 @@ definitions:
     required:
     - tenant_id
     type: object
+  httptransport.ListInstanceTaskHistoryRequest:
+    properties:
+      application_id:
+        type: string
+      instance_id:
+        type: string
+      page:
+        type: integer
+      page_size:
+        type: integer
+      tenant_id:
+        type: string
+    required:
+    - application_id
+    - instance_id
+    - tenant_id
+    type: object
   httptransport.ListInstancesRequest:
     properties:
       application_id:
@@ -298,8 +315,6 @@ definitions:
     properties:
       application_id:
         type: string
-      instance_id:
-        type: string
       page:
         type: integer
       page_size:
@@ -310,6 +325,7 @@ definitions:
         type: string
     required:
     - application_id
+    - task_id
     - tenant_id
     type: object
   httptransport.ListTasksRequest:
@@ -1149,6 +1165,54 @@ paths:
       summary: Start a durable workflow instance
       tags:
       - workflow-instances
+  /api/v1/workflow/instances/task-history/list:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Instance identity and pagination
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httptransport.ListInstanceTaskHistoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httptransport.Response'
+            - properties:
+                body:
+                  $ref: '#/definitions/httptransport.PageDTO-httptransport_TaskHistoryDTO'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httptransport.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httptransport.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httptransport.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httptransport.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httptransport.Response'
+      security:
+      - Bearer: []
+      summary: List task audit history for one workflow instance
+      tags:
+      - workflow-instances
   /api/v1/workflow/tasks/claim:
     post:
       consumes:
@@ -1358,7 +1422,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: Task or instance identity and pagination
+      - description: Task identity and pagination
         in: body
         name: request
         required: true
@@ -1398,7 +1462,7 @@ paths:
             $ref: '#/definitions/httptransport.Response'
       security:
       - Bearer: []
-      summary: List the audit history for one task or workflow instance
+      summary: List the audit history for one task
       tags:
       - workflow-tasks
   /api/v1/workflow/tasks/list:
