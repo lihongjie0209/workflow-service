@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"database/sql/driver"
 	"errors"
 	"regexp"
 	"testing"
@@ -95,6 +96,59 @@ func TestTaskWhereBuildsServerResolvedAssignmentFilter(t *testing.T) {
 		if args[index] != want[index] {
 			t.Fatalf("taskWhere() args[%d] = %#v, want %#v", index, args[index], want[index])
 		}
+	}
+}
+
+func TestRepositoryClaimTaskWritesHistoryInSameTransaction(t *testing.T) {
+	t.Parallel()
+	database, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	repository := &Repository{db: sqlx.NewDb(database, "sqlmock"), now: func() time.Time { return time.Unix(100, 0) }}
+	now := repository.now()
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE workflow_tasks SET status='claimed',claimed_by=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND tenant_id=? AND application_id=? AND version=? AND status='pending'")).
+		WithArgs("user-1", now, "user-1", "task-1", "tenant-1", "app-1", 1).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT "+taskColumns+" FROM workflow_tasks WHERE id=? AND tenant_id=? AND application_id=?")).
+		WithArgs("task-1", "tenant-1", "app-1").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "application_id", "instance_id", "node_id", "name", "assignee_type", "assignee", "claimed_by", "status", "decision", "comment", "input_json", "output_json", "due_at", "completed_at", "version", "created_at", "updated_at", "created_by", "updated_by"}).AddRow("task-1", "tenant-1", "app-1", "instance-1", "approve", "Approve", "user", "user-1", "user-1", TaskClaimed, "", "", "{}", "{}", nil, nil, 2, now, now, "system", "user-1"))
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO workflow_task_history ("+taskHistoryColumns+") VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?,?,?)")).
+		WithArgs(sqlmock.AnyArg(), "tenant-1", "app-1", "task-1", "instance-1", "claim", "user-1", TaskPending, TaskClaimed, `{}`, now, now, "user-1", "user-1").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	claimed, err := repository.ClaimTask(t.Context(), "tenant-1", "app-1", "task-1", 1, "user-1")
+	if err != nil || claimed.InstanceID != "instance-1" || claimed.Status != TaskClaimed {
+		t.Fatalf("ClaimTask() = %+v, %v", claimed, err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRepositoryListTaskHistoryIsScopedAndPaged(t *testing.T) {
+	t.Parallel()
+	database, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	repository := &Repository{db: sqlx.NewDb(database, "sqlmock")}
+	where := "WHERE tenant_id=? AND application_id=? AND (?='' OR task_id=?) AND (?='' OR instance_id=?)"
+	args := []driver.Value{"tenant-1", "app-1", "task-1", "task-1", "", ""}
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(*) FROM workflow_task_history " + where)).WithArgs(args...).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	now := time.Unix(100, 0)
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT " + taskHistoryColumns + " FROM workflow_task_history " + where + " ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?")).WithArgs(append(args, 20, 20)...).WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "application_id", "task_id", "instance_id", "action", "actor_id", "from_status", "to_status", "detail_json", "version", "created_at", "updated_at", "created_by", "updated_by"}).AddRow("history-1", "tenant-1", "app-1", "task-1", "instance-1", "claim", "user-1", "pending", "claimed", "{}", 1, now, now, "user-1", "user-1"))
+
+	page, err := repository.ListTaskHistory(t.Context(), TaskHistoryFilter{TenantID: "tenant-1", ApplicationID: "app-1", TaskID: "task-1", Page: 2, PageSize: 20})
+	if err != nil || page.Total != 1 || len(page.Items) != 1 || page.Items[0].ID != "history-1" {
+		t.Fatalf("ListTaskHistory() = %+v, %v", page, err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
 	}
 }
 

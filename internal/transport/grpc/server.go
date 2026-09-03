@@ -91,6 +91,7 @@ func workflowGRPCRequirement(enabled bool) platformauthz.GRPCResolver {
 			workflowv1.WorkflowService_DelegateTask_FullMethodName:      {Resource: "workflow.task", Action: "delegate", Scope: principal},
 			workflowv1.WorkflowService_GetTask_FullMethodName:           {Resource: "workflow.task", Action: "read", Scope: principal},
 			workflowv1.WorkflowService_ListTasks_FullMethodName:         {Resource: "workflow.task", Action: "list", Scope: principal},
+			workflowv1.WorkflowService_ListTaskHistory_FullMethodName:   {Resource: "workflow.task", Action: "read", Scope: principal},
 		}
 		requirement, ok := requirements[method]
 		return requirement, ok

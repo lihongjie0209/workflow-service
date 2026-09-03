@@ -17,6 +17,7 @@ import (
 const definitionColumns = `id,tenant_id,application_id,definition_key,name,description,status,published_revision,nodes_json,edges_json,version,created_at,updated_at,created_by,updated_by`
 const instanceColumns = `id,tenant_id,application_id,definition_id,definition_revision,business_key,idempotency_key,title,starter_id,status,current_node_id,variables_json,result_json,error_code,error_message,temporal_workflow_id,temporal_run_id,started_at,finished_at,version,created_at,updated_at,created_by,updated_by`
 const taskColumns = `id,tenant_id,application_id,instance_id,node_id,name,assignee_type,assignee,claimed_by,status,decision,comment,input_json,output_json,due_at,completed_at,version,created_at,updated_at,created_by,updated_by`
+const taskHistoryColumns = `id,tenant_id,application_id,task_id,instance_id,action,actor_id,from_status,to_status,detail_json,version,created_at,updated_at,created_by,updated_by`
 
 type Repository struct {
 	db     *sqlx.DB
@@ -433,13 +434,44 @@ func (r *Repository) FinishInstance(ctx context.Context, tenantID, applicationID
 }
 
 func (r *Repository) ClaimTask(ctx context.Context, tenantID, applicationID, id string, expectedVersion int64, actor string) (Task, error) {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return Task{}, fmt.Errorf("begin workflow task claim: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
 	now := r.now()
 	query := r.db.Rebind(`UPDATE workflow_tasks SET status='claimed',claimed_by=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND tenant_id=? AND application_id=? AND version=? AND status='pending'`)
-	result, err := r.db.ExecContext(ctx, query, actor, now, actor, id, tenantID, applicationID, expectedVersion)
+	result, err := tx.ExecContext(ctx, query, actor, now, actor, id, tenantID, applicationID, expectedVersion)
 	if err := affectedOne(result, err, "claim workflow task"); err != nil {
 		return Task{}, err
 	}
-	return r.GetTask(ctx, tenantID, applicationID, id)
+	claimed, err := getTaskTx(ctx, tx, r.db.Rebind, tenantID, applicationID, id)
+	if err != nil {
+		return Task{}, err
+	}
+	history := r.db.Rebind(`INSERT INTO workflow_task_history (` + taskHistoryColumns + `) VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?,?,?)`)
+	if _, err := tx.ExecContext(ctx, history, newRepositoryID(), tenantID, applicationID, id, claimed.InstanceID, "claim", actor, TaskPending, TaskClaimed, `{}`, now, now, actor, actor); err != nil {
+		return Task{}, fmt.Errorf("insert workflow task claim history: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return Task{}, fmt.Errorf("commit workflow task claim: %w", err)
+	}
+	return claimed, nil
+}
+
+func (r *Repository) ListTaskHistory(ctx context.Context, filter TaskHistoryFilter) (Page[TaskHistory], error) {
+	where := `WHERE tenant_id=? AND application_id=? AND (?='' OR task_id=?) AND (?='' OR instance_id=?)`
+	args := []any{filter.TenantID, filter.ApplicationID, filter.TaskID, filter.TaskID, filter.InstanceID, filter.InstanceID}
+	var total int64
+	if err := r.db.GetContext(ctx, &total, r.db.Rebind(`SELECT COUNT(*) FROM workflow_task_history `+where), args...); err != nil {
+		return Page[TaskHistory]{}, fmt.Errorf("count workflow task history: %w", err)
+	}
+	args = append(args, filter.PageSize, (filter.Page-1)*filter.PageSize)
+	items := make([]TaskHistory, 0)
+	if err := r.db.SelectContext(ctx, &items, r.db.Rebind(`SELECT `+taskHistoryColumns+` FROM workflow_task_history `+where+` ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?`), args...); err != nil {
+		return Page[TaskHistory]{}, fmt.Errorf("list workflow task history: %w", err)
+	}
+	return Page[TaskHistory]{Items: items, Total: total, Page: filter.Page, PageSize: filter.PageSize}, nil
 }
 
 func (r *Repository) CompleteTask(ctx context.Context, current Task, decision, comment, outputJSON, actor string) (Task, error) {

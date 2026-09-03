@@ -89,6 +89,7 @@ func TestIdempotencyExecutionBypassesWorkflowQueries(t *testing.T) {
 		"/api/v1/workflow/instances/list",
 		"/api/v1/workflow/tasks/get",
 		"/api/v1/workflow/tasks/list",
+		"/api/v1/workflow/tasks/history/list",
 	} {
 		t.Run(route, func(t *testing.T) {
 			t.Parallel()
@@ -119,7 +120,7 @@ func (a authorizationStub) Authorize(context.Context, platformprincipal.Principa
 
 func TestWorkflowHTTPRequirementCoversEveryBusinessRoute(t *testing.T) {
 	t.Parallel()
-	routes := []string{"/api/v1/workflow/definitions/create", "/api/v1/workflow/definitions/update", "/api/v1/workflow/definitions/publish", "/api/v1/workflow/definitions/disable", "/api/v1/workflow/definitions/get", "/api/v1/workflow/definitions/list", "/api/v1/workflow/instances/start", "/api/v1/workflow/instances/cancel", "/api/v1/workflow/instances/get", "/api/v1/workflow/instances/list", "/api/v1/workflow/tasks/claim", "/api/v1/workflow/tasks/complete", "/api/v1/workflow/tasks/delegate", "/api/v1/workflow/tasks/get", "/api/v1/workflow/tasks/list"}
+	routes := []string{"/api/v1/workflow/definitions/create", "/api/v1/workflow/definitions/update", "/api/v1/workflow/definitions/publish", "/api/v1/workflow/definitions/disable", "/api/v1/workflow/definitions/get", "/api/v1/workflow/definitions/list", "/api/v1/workflow/instances/start", "/api/v1/workflow/instances/cancel", "/api/v1/workflow/instances/get", "/api/v1/workflow/instances/list", "/api/v1/workflow/tasks/claim", "/api/v1/workflow/tasks/complete", "/api/v1/workflow/tasks/delegate", "/api/v1/workflow/tasks/get", "/api/v1/workflow/tasks/list", "/api/v1/workflow/tasks/history/list"}
 	for _, route := range routes {
 		requirement, ok := workflowHTTPRequirement(route)
 		if !ok || requirement.Resource == "" || requirement.Action == "" || requirement.Scope != platformauthz.ScopePrincipal {

@@ -95,6 +95,23 @@ type TaskDTO struct {
 	CreatedBy     string          `json:"created_by"`
 	UpdatedBy     string          `json:"updated_by"`
 }
+type TaskHistoryDTO struct {
+	ID            string          `json:"id"`
+	TenantID      string          `json:"tenant_id"`
+	ApplicationID string          `json:"application_id"`
+	TaskID        string          `json:"task_id"`
+	InstanceID    string          `json:"instance_id"`
+	Action        string          `json:"action"`
+	ActorID       string          `json:"actor_id"`
+	FromStatus    string          `json:"from_status"`
+	ToStatus      string          `json:"to_status"`
+	DetailJSON    json.RawMessage `json:"detail_json" swaggertype:"object"`
+	Version       int64           `json:"version"`
+	CreatedAt     time.Time       `json:"created_at"`
+	UpdatedAt     time.Time       `json:"updated_at"`
+	CreatedBy     string          `json:"created_by"`
+	UpdatedBy     string          `json:"updated_by"`
+}
 type PageDTO[T any] struct {
 	Items    []T   `json:"items"`
 	Total    int64 `json:"total"`
@@ -212,6 +229,14 @@ type ListTasksRequest struct {
 	InstanceID    string `json:"instance_id"`
 	Status        string `json:"status"`
 	Search        string `json:"search"`
+	Page          int    `json:"page"`
+	PageSize      int    `json:"page_size"`
+}
+type ListTaskHistoryRequest struct {
+	TenantID      string `json:"tenant_id" binding:"required"`
+	ApplicationID string `json:"application_id" binding:"required"`
+	TaskID        string `json:"task_id"`
+	InstanceID    string `json:"instance_id"`
 	Page          int    `json:"page"`
 	PageSize      int    `json:"page_size"`
 }
@@ -512,6 +537,33 @@ func (h *Handler) ListTasks(c *gin.Context) {
 		items = append(items, taskDTO(item))
 	}
 	respond(c, h, PageDTO[TaskDTO]{Items: items, Total: value.Total, Page: value.Page, PageSize: value.PageSize}, err)
+}
+
+// ListTaskHistory godoc
+// @Summary List the audit history for one task or workflow instance
+// @Tags workflow-tasks
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param request body ListTaskHistoryRequest true "Task or instance identity and pagination"
+// @Success 200 {object} Response{body=PageDTO[TaskHistoryDTO]}
+// @Failure 400,401,403,404,500 {object} Response
+// @Router /api/v1/workflow/tasks/history/list [post]
+func (h *Handler) ListTaskHistory(c *gin.Context) {
+	var request ListTaskHistoryRequest
+	if !bind(c, h, &request) {
+		return
+	}
+	value, err := h.workflow.ListTaskHistory(c.Request.Context(), workflow.TaskHistoryFilter{TenantID: request.TenantID, ApplicationID: request.ApplicationID, TaskID: request.TaskID, InstanceID: request.InstanceID, Page: request.Page, PageSize: request.PageSize})
+	items := make([]TaskHistoryDTO, 0, len(value.Items))
+	for _, item := range value.Items {
+		items = append(items, taskHistoryDTO(item))
+	}
+	respond(c, h, PageDTO[TaskHistoryDTO]{Items: items, Total: value.Total, Page: value.Page, PageSize: value.PageSize}, err)
+}
+
+func taskHistoryDTO(value workflow.TaskHistory) TaskHistoryDTO {
+	return TaskHistoryDTO{ID: value.ID, TenantID: value.TenantID, ApplicationID: value.ApplicationID, TaskID: value.TaskID, InstanceID: value.InstanceID, Action: value.Action, ActorID: value.ActorID, FromStatus: value.FromStatus, ToStatus: value.ToStatus, DetailJSON: rawObject(json.RawMessage(value.DetailJSON)), Version: value.Version, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt, CreatedBy: value.CreatedBy, UpdatedBy: value.UpdatedBy}
 }
 
 func bind(c *gin.Context, h *Handler, target any) bool {

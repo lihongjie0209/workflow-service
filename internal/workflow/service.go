@@ -31,6 +31,7 @@ type Store interface {
 	ListInstances(context.Context, InstanceFilter) (Page[Instance], error)
 	GetTask(context.Context, string, string, string) (Task, error)
 	ListTasks(context.Context, TaskFilter) (Page[Task], error)
+	ListTaskHistory(context.Context, TaskHistoryFilter) (Page[TaskHistory], error)
 	ClaimTask(context.Context, string, string, string, int64, string) (Task, error)
 	CompleteTask(context.Context, Task, string, string, string, string) (Task, error)
 	DelegateTask(context.Context, Task, string, string, string) (Task, error)
@@ -263,6 +264,23 @@ func (s *Service) ListInstances(ctx context.Context, filter InstanceFilter) (Pag
 func (s *Service) GetTask(ctx context.Context, tenantID, applicationID, id string) (Task, error) {
 	_, task, err := s.authorizedTask(ctx, tenantID, applicationID, id)
 	return task, err
+}
+
+func (s *Service) ListTaskHistory(ctx context.Context, filter TaskHistoryFilter) (Page[TaskHistory], error) {
+	if filter.TaskID == "" && filter.InstanceID == "" || filter.TaskID != "" && filter.InstanceID != "" {
+		return Page[TaskHistory]{}, invalid("exactly one task or instance ID is required")
+	}
+	if filter.TaskID != "" {
+		if _, _, err := s.authorizedTask(ctx, filter.TenantID, filter.ApplicationID, filter.TaskID); err != nil {
+			return Page[TaskHistory]{}, err
+		}
+	} else {
+		if _, err := s.GetInstance(ctx, filter.TenantID, filter.ApplicationID, filter.InstanceID); err != nil {
+			return Page[TaskHistory]{}, err
+		}
+	}
+	filter.Page, filter.PageSize = normalizePage(filter.Page, filter.PageSize)
+	return s.store.ListTaskHistory(ctx, filter)
 }
 
 func (s *Service) ListMyTasks(ctx context.Context, filter TaskFilter) (Page[Task], error) {

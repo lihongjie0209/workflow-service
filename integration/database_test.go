@@ -103,12 +103,20 @@ func TestRepositoryAndMigrations(t *testing.T) {
 			if err != nil {
 				t.Fatalf("CreateTask: %v", err)
 			}
+			task, err = repository.ClaimTask(requestCtx, "tenant-1", "application-1", task.ID, task.Version, "user-1")
+			if err != nil {
+				t.Fatalf("ClaimTask: %v", err)
+			}
 			task, err = repository.CompleteTask(requestCtx, task, workflow.DecisionApprove, "ok", `{"approved":true}`, "user-1")
 			if err != nil {
 				t.Fatalf("CompleteTask: %v", err)
 			}
-			if task.Status != workflow.TaskApproved || task.Version != 2 {
+			if task.Status != workflow.TaskApproved || task.Version != 3 {
 				t.Fatalf("task = %#v", task)
+			}
+			history, err := repository.ListTaskHistory(requestCtx, workflow.TaskHistoryFilter{TenantID: "tenant-1", ApplicationID: "application-1", InstanceID: instance.ID, Page: 1, PageSize: 20})
+			if err != nil || history.Total != 2 || len(history.Items) != 2 {
+				t.Fatalf("history=%+v err=%v", history, err)
 			}
 			var eventCount, historyCount int
 			if err := db.GetContext(ctx, &eventCount, `SELECT count(*) FROM workflow_outbox_events`); err != nil {
@@ -117,7 +125,7 @@ func TestRepositoryAndMigrations(t *testing.T) {
 			if err := db.GetContext(ctx, &historyCount, `SELECT count(*) FROM workflow_task_history`); err != nil {
 				t.Fatal(err)
 			}
-			if eventCount != 4 || historyCount != 1 {
+			if eventCount != 4 || historyCount != 2 {
 				t.Fatalf("events=%d history=%d", eventCount, historyCount)
 			}
 			if err := db.Close(); err != nil {

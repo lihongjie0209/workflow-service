@@ -183,6 +183,26 @@ func TestServiceRejectsStaleTaskActionBeforeRepositoryWrite(t *testing.T) {
 	}
 }
 
+func TestServiceListTaskHistoryEnforcesVisibilityAndBoundsPage(t *testing.T) {
+	t.Parallel()
+	store := &fakeStore{task: Task{ID: "task-1", TenantID: "tenant-1", ApplicationID: "app-1", AssigneeType: AssigneeRole, Assignee: "approver"}}
+	store.listTaskHistory = func(_ context.Context, filter TaskHistoryFilter) (Page[TaskHistory], error) {
+		if filter.TaskID != "task-1" || filter.InstanceID != "" || filter.Page != 1 || filter.PageSize != 200 {
+			t.Fatalf("history filter = %+v", filter)
+		}
+		return Page[TaskHistory]{Items: []TaskHistory{{ID: "history-1"}}, Total: 1, Page: filter.Page, PageSize: filter.PageSize}, nil
+	}
+	service := mustService(t, store, &fakeAssignments{roles: []string{"approver"}})
+	page, err := service.ListTaskHistory(actorContext("user-1"), TaskHistoryFilter{TenantID: "tenant-1", ApplicationID: "app-1", TaskID: "task-1", PageSize: 1000})
+	if err != nil || page.Total != 1 {
+		t.Fatalf("ListTaskHistory() = %+v, %v", page, err)
+	}
+	service = mustService(t, store, &fakeAssignments{roles: []string{"viewer"}})
+	if _, err := service.ListTaskHistory(actorContext("user-1"), TaskHistoryFilter{TenantID: "tenant-1", ApplicationID: "app-1", TaskID: "task-1"}); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("ListTaskHistory() error = %v, want ErrForbidden", err)
+	}
+}
+
 func mustService(t *testing.T, store Store, assignments AssignmentResolver) *Service {
 	t.Helper()
 	service, err := NewService(store, assignments, fakeApplications{})
@@ -229,6 +249,7 @@ type fakeStore struct {
 	createDefinition    func(context.Context, Definition) (Definition, error)
 	createInstance      func(context.Context, Instance, Definition) (Instance, error)
 	listTasks           func(context.Context, TaskFilter) (Page[Task], error)
+	listTaskHistory     func(context.Context, TaskHistoryFilter) (Page[TaskHistory], error)
 	claimTask           func(context.Context, string, string, string, int64, string) (Task, error)
 }
 
@@ -279,6 +300,12 @@ func (f *fakeStore) ListTasks(ctx context.Context, filter TaskFilter) (Page[Task
 		return f.listTasks(ctx, filter)
 	}
 	return Page[Task]{}, nil
+}
+func (f *fakeStore) ListTaskHistory(ctx context.Context, filter TaskHistoryFilter) (Page[TaskHistory], error) {
+	if f.listTaskHistory != nil {
+		return f.listTaskHistory(ctx, filter)
+	}
+	return Page[TaskHistory]{}, nil
 }
 func (f *fakeStore) ClaimTask(ctx context.Context, tenantID, applicationID, id string, version int64, actor string) (Task, error) {
 	if f.claimTask != nil {

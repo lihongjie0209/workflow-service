@@ -146,6 +146,24 @@ type Task struct {
 	UpdatedBy     string     `db:"updated_by"`
 }
 
+type TaskHistory struct {
+	ID            string    `db:"id"`
+	TenantID      string    `db:"tenant_id"`
+	ApplicationID string    `db:"application_id"`
+	TaskID        string    `db:"task_id"`
+	InstanceID    string    `db:"instance_id"`
+	Action        string    `db:"action"`
+	ActorID       string    `db:"actor_id"`
+	FromStatus    string    `db:"from_status"`
+	ToStatus      string    `db:"to_status"`
+	DetailJSON    string    `db:"detail_json"`
+	Version       int64     `db:"version"`
+	CreatedAt     time.Time `db:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"`
+	CreatedBy     string    `db:"created_by"`
+	UpdatedBy     string    `db:"updated_by"`
+}
+
 type Page[T any] struct {
 	Items    []T
 	Total    int64
@@ -169,4 +187,9 @@ type TaskFilter struct {
 	RoleIDs                                                             []string
 	IncludeUnclaimed                                                    bool
 	Page, PageSize                                                      int
+}
+
+type TaskHistoryFilter struct {
+	TenantID, ApplicationID, TaskID, InstanceID string
+	Page, PageSize                              int
 }

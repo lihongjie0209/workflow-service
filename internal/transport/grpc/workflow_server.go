@@ -160,6 +160,19 @@ func (s *workflowServer) ListTasks(ctx context.Context, request *workflowv1.List
 	return &workflowv1.ListTasksResponse{Tasks: items, Page: pageToProto(values.Total, values.Page, values.PageSize)}, nil
 }
 
+func (s *workflowServer) ListTaskHistory(ctx context.Context, request *workflowv1.ListTaskHistoryRequest) (*workflowv1.ListTaskHistoryResponse, error) {
+	page, size := pageFromProto(request.GetPage())
+	values, err := s.service.ListTaskHistory(ctx, workflow.TaskHistoryFilter{TenantID: request.GetTenantId(), ApplicationID: request.GetApplicationId(), TaskID: request.GetTaskId(), InstanceID: request.GetInstanceId(), Page: page, PageSize: size})
+	if err != nil {
+		return nil, grpcError(err)
+	}
+	items := make([]*workflowv1.WorkflowTaskHistory, 0, len(values.Items))
+	for _, value := range values.Items {
+		items = append(items, taskHistoryToProto(value))
+	}
+	return &workflowv1.ListTaskHistoryResponse{Items: items, Page: pageToProto(values.Total, values.Page, values.PageSize)}, nil
+}
+
 func grpcError(err error) error {
 	switch {
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
@@ -241,6 +254,9 @@ func instanceToProto(value workflow.Instance) *workflowv1.WorkflowInstance {
 }
 func taskToProto(value workflow.Task) *workflowv1.WorkflowTask {
 	return &workflowv1.WorkflowTask{Id: value.ID, TenantId: value.TenantID, ApplicationId: value.ApplicationID, InstanceId: value.InstanceID, NodeId: value.NodeID, Name: value.Name, AssigneeType: assigneeTypeToProto(value.AssigneeType), Assignee: value.Assignee, ClaimedBy: value.ClaimedBy, Status: taskStatusToProto(value.Status), Decision: decisionToProto(value.Decision), Comment: value.Comment, InputJson: value.InputJSON, OutputJson: value.OutputJSON, DueAt: optionalTimestamp(value.DueAt), CompletedAt: optionalTimestamp(value.CompletedAt), Version: value.Version, CreatedAt: timestamppb.New(value.CreatedAt), UpdatedAt: timestamppb.New(value.UpdatedAt), CreatedBy: value.CreatedBy, UpdatedBy: value.UpdatedBy}
+}
+func taskHistoryToProto(value workflow.TaskHistory) *workflowv1.WorkflowTaskHistory {
+	return &workflowv1.WorkflowTaskHistory{Id: value.ID, TenantId: value.TenantID, ApplicationId: value.ApplicationID, TaskId: value.TaskID, InstanceId: value.InstanceID, Action: value.Action, ActorId: value.ActorID, FromStatus: value.FromStatus, ToStatus: value.ToStatus, DetailJson: value.DetailJSON, Version: value.Version, CreatedAt: timestamppb.New(value.CreatedAt), UpdatedAt: timestamppb.New(value.UpdatedAt), CreatedBy: value.CreatedBy, UpdatedBy: value.UpdatedBy}
 }
 
 func definitionStatusFromProto(value workflowv1.DefinitionStatus) string {
