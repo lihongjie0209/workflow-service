@@ -197,6 +197,20 @@ type TaskFilter struct {
 	Page, PageSize                                                      int
 }
 
+type TaskInstanceCandidate struct {
+	ID          string `db:"id"`
+	Title       string `db:"title"`
+	BusinessKey string `db:"business_key"`
+	Status      string `db:"status"`
+}
+
+type TaskInstanceCandidateFilter struct {
+	TenantID, ApplicationID, Search, AssigneeUserID string
+	RoleIDs                                         []string
+	IncludeUnclaimed                                bool
+	Page, PageSize                                  int
+}
+
 type TaskHistoryFilter struct {
 	TenantID, ApplicationID, TaskID, InstanceID string
 	Page, PageSize                              int

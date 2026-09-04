@@ -602,6 +602,34 @@ func (r *Repository) ListTasks(ctx context.Context, filter TaskFilter) (Page[Tas
 	return Page[Task]{Items: items, Total: total, Page: filter.Page, PageSize: filter.PageSize}, nil
 }
 
+func (r *Repository) ListTaskInstanceCandidates(ctx context.Context, filter TaskInstanceCandidateFilter) (Page[TaskInstanceCandidate], error) {
+	taskFilter := TaskFilter{
+		TenantID: filter.TenantID, ApplicationID: filter.ApplicationID, AssigneeUserID: filter.AssigneeUserID,
+		RoleIDs: filter.RoleIDs, IncludeUnclaimed: filter.IncludeUnclaimed,
+	}
+	taskWhereSQL, args, err := taskWhere(taskFilter)
+	if err != nil {
+		return Page[TaskInstanceCandidate]{}, err
+	}
+	where := `WHERE i.id IN (SELECT instance_id FROM workflow_tasks ` + taskWhereSQL + `)`
+	if filter.Search != "" {
+		where += ` AND (LOWER(i.title) LIKE ? OR LOWER(i.business_key) LIKE ?)`
+		search := "%" + strings.ToLower(filter.Search) + "%"
+		args = append(args, search, search)
+	}
+	var total int64
+	if err := r.db.GetContext(ctx, &total, r.db.Rebind(`SELECT COUNT(*) FROM workflow_instances i `+where), args...); err != nil {
+		return Page[TaskInstanceCandidate]{}, fmt.Errorf("count workflow task instance candidates: %w", err)
+	}
+	args = append(args, filter.PageSize, (filter.Page-1)*filter.PageSize)
+	items := make([]TaskInstanceCandidate, 0)
+	query := r.db.Rebind(`SELECT i.id,i.title,i.business_key,i.status FROM workflow_instances i ` + where + ` ORDER BY i.updated_at DESC,i.id LIMIT ? OFFSET ?`)
+	if err := r.db.SelectContext(ctx, &items, query, args...); err != nil {
+		return Page[TaskInstanceCandidate]{}, fmt.Errorf("list workflow task instance candidates: %w", err)
+	}
+	return Page[TaskInstanceCandidate]{Items: items, Total: total, Page: filter.Page, PageSize: filter.PageSize}, nil
+}
+
 func taskWhere(filter TaskFilter) (string, []any, error) {
 	clauses := []string{"tenant_id=?", "application_id=?"}
 	args := []any{filter.TenantID, filter.ApplicationID}

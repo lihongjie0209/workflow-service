@@ -80,6 +80,7 @@ func NewServer(lc fx.Lifecycle, cfg config.Config, handler *Handler, authService
 	api.POST("/workflow/tasks/delegate", handler.DelegateTask)
 	api.POST("/workflow/tasks/get", handler.GetTask)
 	api.POST("/workflow/tasks/list", handler.ListTasks)
+	api.POST("/workflow/tasks/instances/list", handler.ListTaskInstanceCandidates)
 	api.POST("/workflow/tasks/history/list", handler.ListTaskHistory)
 	api.POST("/workflow/instances/task-history/list", handler.ListInstanceTaskHistory)
 	server := &http.Server{Addr: cfg.HTTP.Address, Handler: router, ReadTimeout: cfg.HTTP.ReadTimeout, WriteTimeout: cfg.HTTP.WriteTimeout, IdleTimeout: cfg.HTTP.IdleTimeout}

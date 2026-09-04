@@ -372,6 +372,7 @@ func workflowHTTPRequirement(route string) (platformauthz.Requirement, bool) {
 		"/api/v1/workflow/tasks/delegate":                   {Resource: "workflow.task", Action: "delegate", Scope: principal},
 		"/api/v1/workflow/tasks/get":                        {Resource: "workflow.task", Action: "read", Scope: principal},
 		"/api/v1/workflow/tasks/list":                       {Resource: "workflow.task", Action: "list", Scope: principal},
+		"/api/v1/workflow/tasks/instances/list":             {Resource: "workflow.task", Action: "list", Scope: principal},
 		"/api/v1/workflow/tasks/history/list":               {Resource: "workflow.task", Action: "read", Scope: principal},
 		"/api/v1/workflow/instances/task-history/list":      {Resource: "workflow.instance", Action: "read", Scope: principal},
 	}

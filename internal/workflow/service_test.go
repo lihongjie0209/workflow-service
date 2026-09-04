@@ -159,6 +159,26 @@ func TestServiceListMyTasksIgnoresCallerRoleClaims(t *testing.T) {
 	}
 }
 
+func TestServiceTaskInstanceCandidatesUseServerResolvedVisibility(t *testing.T) {
+	t.Parallel()
+	store := &fakeStore{listTaskInstances: func(_ context.Context, filter TaskInstanceCandidateFilter) (Page[TaskInstanceCandidate], error) {
+		if filter.AssigneeUserID != "user-1" || len(filter.RoleIDs) != 1 || filter.RoleIDs[0] != "role-1" || !filter.IncludeUnclaimed {
+			t.Fatalf("candidate visibility = %+v", filter)
+		}
+		if filter.Search != "orders" || filter.Page != 1 || filter.PageSize != 200 {
+			t.Fatalf("candidate query = %+v", filter)
+		}
+		return Page[TaskInstanceCandidate]{}, nil
+	}}
+	service := mustService(t, store, &fakeAssignments{roles: []string{"role-1"}})
+	_, err := service.ListMyTaskInstanceCandidates(actorContext("user-1"), TaskInstanceCandidateFilter{
+		TenantID: "tenant-1", ApplicationID: "app-1", Search: "  orders  ", AssigneeUserID: "forged", RoleIDs: []string{"admin"}, PageSize: 1000,
+	})
+	if err != nil {
+		t.Fatalf("ListMyTaskInstanceCandidates() error = %v", err)
+	}
+}
+
 func TestServiceTaskAuthorizationUsesResolvedRole(t *testing.T) {
 	t.Parallel()
 
@@ -270,6 +290,7 @@ type fakeStore struct {
 	listStartCandidates func(context.Context, DefinitionFilter) (Page[DefinitionCandidate], error)
 	listUsedCandidates  func(context.Context, DefinitionFilter) (Page[DefinitionCandidate], error)
 	listTasks           func(context.Context, TaskFilter) (Page[Task], error)
+	listTaskInstances   func(context.Context, TaskInstanceCandidateFilter) (Page[TaskInstanceCandidate], error)
 	listTaskHistory     func(context.Context, TaskHistoryFilter) (Page[TaskHistory], error)
 	claimTask           func(context.Context, string, string, string, int64, string) (Task, error)
 }
@@ -333,6 +354,12 @@ func (f *fakeStore) ListTasks(ctx context.Context, filter TaskFilter) (Page[Task
 		return f.listTasks(ctx, filter)
 	}
 	return Page[Task]{}, nil
+}
+func (f *fakeStore) ListTaskInstanceCandidates(ctx context.Context, filter TaskInstanceCandidateFilter) (Page[TaskInstanceCandidate], error) {
+	if f.listTaskInstances == nil {
+		return Page[TaskInstanceCandidate]{}, errors.New("unexpected ListTaskInstanceCandidates call")
+	}
+	return f.listTaskInstances(ctx, filter)
 }
 func (f *fakeStore) ListTaskHistory(ctx context.Context, filter TaskHistoryFilter) (Page[TaskHistory], error) {
 	if f.listTaskHistory != nil {

@@ -33,6 +33,7 @@ type Store interface {
 	ListInstances(context.Context, InstanceFilter) (Page[Instance], error)
 	GetTask(context.Context, string, string, string) (Task, error)
 	ListTasks(context.Context, TaskFilter) (Page[Task], error)
+	ListTaskInstanceCandidates(context.Context, TaskInstanceCandidateFilter) (Page[TaskInstanceCandidate], error)
 	ListTaskHistory(context.Context, TaskHistoryFilter) (Page[TaskHistory], error)
 	ClaimTask(context.Context, string, string, string, int64, string) (Task, error)
 	CompleteTask(context.Context, Task, string, string, string, string) (Task, error)
@@ -315,25 +316,48 @@ func (s *Service) ListTaskHistory(ctx context.Context, filter TaskHistoryFilter)
 }
 
 func (s *Service) ListMyTasks(ctx context.Context, filter TaskFilter) (Page[Task], error) {
-	actor, err := actorForTenant(ctx, filter.TenantID)
+	prepared, err := s.prepareMyTaskFilter(ctx, filter)
 	if err != nil {
 		return Page[Task]{}, err
 	}
+	return s.store.ListTasks(ctx, prepared)
+}
+
+func (s *Service) ListMyTaskInstanceCandidates(ctx context.Context, filter TaskInstanceCandidateFilter) (Page[TaskInstanceCandidate], error) {
+	prepared, err := s.prepareMyTaskFilter(ctx, TaskFilter{
+		TenantID: filter.TenantID, ApplicationID: filter.ApplicationID, Search: filter.Search,
+		Page: filter.Page, PageSize: filter.PageSize,
+	})
+	if err != nil {
+		return Page[TaskInstanceCandidate]{}, err
+	}
+	return s.store.ListTaskInstanceCandidates(ctx, TaskInstanceCandidateFilter{
+		TenantID: prepared.TenantID, ApplicationID: prepared.ApplicationID, Search: strings.TrimSpace(filter.Search),
+		AssigneeUserID: prepared.AssigneeUserID, RoleIDs: prepared.RoleIDs, IncludeUnclaimed: prepared.IncludeUnclaimed,
+		Page: prepared.Page, PageSize: prepared.PageSize,
+	})
+}
+
+func (s *Service) prepareMyTaskFilter(ctx context.Context, filter TaskFilter) (TaskFilter, error) {
+	actor, err := actorForTenant(ctx, filter.TenantID)
+	if err != nil {
+		return TaskFilter{}, err
+	}
 	if filter.TenantID == "" || filter.ApplicationID == "" || (filter.Status != "" && !oneOf(filter.Status, TaskPending, TaskClaimed, TaskApproved, TaskRejected, TaskCancelled, TaskExpired)) {
-		return Page[Task]{}, invalid("tenant and valid task status are required")
+		return TaskFilter{}, invalid("tenant and valid task status are required")
 	}
 	if err := s.verifyApplication(ctx, filter.TenantID, filter.ApplicationID); err != nil {
-		return Page[Task]{}, err
+		return TaskFilter{}, err
 	}
 	roles, err := s.assignments.RoleIDs(ctx, filter.TenantID, actor)
 	if err != nil {
-		return Page[Task]{}, fmt.Errorf("resolve workflow task assignments: %w", err)
+		return TaskFilter{}, fmt.Errorf("resolve workflow task assignments: %w", err)
 	}
 	filter.AssigneeUserID = actor
 	filter.RoleIDs = roles
 	filter.IncludeUnclaimed = true
 	filter.Page, filter.PageSize = normalizePage(filter.Page, filter.PageSize)
-	return s.store.ListTasks(ctx, filter)
+	return filter, nil
 }
 
 func (s *Service) ClaimTask(ctx context.Context, tenantID, applicationID, id string, expectedVersion int64) (Task, error) {

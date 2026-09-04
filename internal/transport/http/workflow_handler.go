@@ -126,6 +126,12 @@ type DefinitionCandidateDTO struct {
 	Status            string `json:"status"`
 	PublishedRevision uint32 `json:"published_revision"`
 }
+type TaskInstanceCandidateDTO struct {
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	BusinessKey string `json:"business_key"`
+	Status      string `json:"status"`
+}
 type CompleteTaskResponseBody struct {
 	Task     TaskDTO     `json:"task"`
 	Instance InstanceDTO `json:"instance"`
@@ -243,6 +249,13 @@ type ListTasksRequest struct {
 	ApplicationID string `json:"application_id" binding:"required"`
 	InstanceID    string `json:"instance_id"`
 	Status        string `json:"status"`
+	Search        string `json:"search"`
+	Page          int    `json:"page"`
+	PageSize      int    `json:"page_size"`
+}
+type ListTaskInstanceCandidatesRequest struct {
+	TenantID      string `json:"tenant_id" binding:"required"`
+	ApplicationID string `json:"application_id" binding:"required"`
 	Search        string `json:"search"`
 	Page          int    `json:"page"`
 	PageSize      int    `json:"page_size"`
@@ -597,6 +610,31 @@ func (h *Handler) ListTasks(c *gin.Context) {
 		items = append(items, taskDTO(item))
 	}
 	respond(c, h, PageDTO[TaskDTO]{Items: items, Total: value.Total, Page: value.Page, PageSize: value.PageSize}, err)
+}
+
+// ListTaskInstanceCandidates godoc
+// @Summary Search instances referenced by tasks visible to the caller
+// @Tags workflow-tasks
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param request body ListTaskInstanceCandidatesRequest true "Search and pagination"
+// @Success 200 {object} Response{body=PageDTO[TaskInstanceCandidateDTO]}
+// @Router /api/v1/workflow/tasks/instances/list [post]
+func (h *Handler) ListTaskInstanceCandidates(c *gin.Context) {
+	var request ListTaskInstanceCandidatesRequest
+	if !bind(c, h, &request) {
+		return
+	}
+	value, err := h.workflow.ListMyTaskInstanceCandidates(c.Request.Context(), workflow.TaskInstanceCandidateFilter{
+		TenantID: request.TenantID, ApplicationID: request.ApplicationID, Search: request.Search,
+		Page: request.Page, PageSize: request.PageSize,
+	})
+	items := make([]TaskInstanceCandidateDTO, 0, len(value.Items))
+	for _, item := range value.Items {
+		items = append(items, TaskInstanceCandidateDTO{ID: item.ID, Title: item.Title, BusinessKey: item.BusinessKey, Status: item.Status})
+	}
+	respond(c, h, PageDTO[TaskInstanceCandidateDTO]{Items: items, Total: value.Total, Page: value.Page, PageSize: value.PageSize}, err)
 }
 
 // ListTaskHistory godoc

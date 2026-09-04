@@ -357,6 +357,22 @@ definitions:
     - task_id
     - tenant_id
     type: object
+  httptransport.ListTaskInstanceCandidatesRequest:
+    properties:
+      application_id:
+        type: string
+      page:
+        type: integer
+      page_size:
+        type: integer
+      search:
+        type: string
+      tenant_id:
+        type: string
+    required:
+    - application_id
+    - tenant_id
+    type: object
   httptransport.ListTasksRequest:
     properties:
       application_id:
@@ -439,6 +455,19 @@ definitions:
       items:
         items:
           $ref: '#/definitions/httptransport.TaskHistoryDTO'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  httptransport.PageDTO-httptransport_TaskInstanceCandidateDTO:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/httptransport.TaskInstanceCandidateDTO'
         type: array
       page:
         type: integer
@@ -558,6 +587,17 @@ definitions:
         type: string
       version:
         type: integer
+    type: object
+  httptransport.TaskInstanceCandidateDTO:
+    properties:
+      business_key:
+        type: string
+      id:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
     type: object
   httptransport.TaskVersionRequest:
     properties:
@@ -1561,6 +1601,34 @@ paths:
       security:
       - Bearer: []
       summary: List the audit history for one task
+      tags:
+      - workflow-tasks
+  /api/v1/workflow/tasks/instances/list:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Search and pagination
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httptransport.ListTaskInstanceCandidatesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httptransport.Response'
+            - properties:
+                body:
+                  $ref: '#/definitions/httptransport.PageDTO-httptransport_TaskInstanceCandidateDTO'
+              type: object
+      security:
+      - Bearer: []
+      summary: Search instances referenced by tasks visible to the caller
       tags:
       - workflow-tasks
   /api/v1/workflow/tasks/list:

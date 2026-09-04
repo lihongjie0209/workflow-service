@@ -156,6 +156,34 @@ func TestTaskWhereBuildsServerResolvedAssignmentFilter(t *testing.T) {
 	}
 }
 
+func TestRepositoryTaskInstanceCandidatesReuseTaskVisibility(t *testing.T) {
+	t.Parallel()
+	database, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	repository := &Repository{db: sqlx.NewDb(database, "sqlmock")}
+	args := []driver.Value{"tenant-1", "app-1", "user-1", "role-1", "user-1", "%order%", "%order%"}
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM workflow_instances i WHERE i.id IN \(SELECT instance_id FROM workflow_tasks .*assignee_type.*claimed_by.*\) AND \(LOWER\(i.title\) LIKE \? OR LOWER\(i.business_key\) LIKE \?\)`).
+		WithArgs(args...).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	mock.ExpectQuery(`SELECT i.id,i.title,i.business_key,i.status FROM workflow_instances i .* ORDER BY i.updated_at DESC,i.id LIMIT \? OFFSET \?`).
+		WithArgs(append(args, int64(20), int64(0))...).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "title", "business_key", "status"}).AddRow("instance-1", "Order approval", "order-1", InstanceRunning))
+	page, err := repository.ListTaskInstanceCandidates(t.Context(), TaskInstanceCandidateFilter{
+		TenantID: "tenant-1", ApplicationID: "app-1", Search: "order", AssigneeUserID: "user-1", RoleIDs: []string{"role-1"}, IncludeUnclaimed: true, Page: 1, PageSize: 20,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Total != 1 || len(page.Items) != 1 || page.Items[0].ID != "instance-1" {
+		t.Fatalf("candidate page = %+v", page)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("SQL expectations: %v", err)
+	}
+}
+
 func TestRepositoryClaimTaskWritesHistoryInSameTransaction(t *testing.T) {
 	t.Parallel()
 	database, mock, err := sqlmock.New()
