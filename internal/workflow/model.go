@@ -176,6 +176,14 @@ type DefinitionFilter struct {
 	Page, PageSize                          int
 }
 
+type DefinitionCandidate struct {
+	ID                string `db:"id"`
+	Key               string `db:"definition_key"`
+	Name              string `db:"name"`
+	Status            string `db:"status"`
+	PublishedRevision uint32 `db:"published_revision"`
+}
+
 type InstanceFilter struct {
 	TenantID, ApplicationID, DefinitionID, Status, StarterID, Search string
 	StartedFrom, StartedUntil                                        *time.Time

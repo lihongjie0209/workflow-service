@@ -73,6 +73,8 @@ func NewServer(lc fx.Lifecycle, cfg config.Config, handler *Handler, authService
 	api.POST("/workflow/instances/cancel", handler.CancelInstance)
 	api.POST("/workflow/instances/get", handler.GetInstance)
 	api.POST("/workflow/instances/list", handler.ListInstances)
+	api.POST("/workflow/instances/start-definitions/list", handler.ListStartDefinitionCandidates)
+	api.POST("/workflow/instances/definitions/list", handler.ListInstanceDefinitionCandidates)
 	api.POST("/workflow/tasks/claim", handler.ClaimTask)
 	api.POST("/workflow/tasks/complete", handler.CompleteTask)
 	api.POST("/workflow/tasks/delegate", handler.DelegateTask)

@@ -106,6 +106,19 @@ definitions:
     - nodes
     - tenant_id
     type: object
+  httptransport.DefinitionCandidateDTO:
+    properties:
+      id:
+        type: string
+      key:
+        type: string
+      name:
+        type: string
+      published_revision:
+        type: integer
+      status:
+        type: string
+    type: object
   httptransport.DefinitionDTO:
     properties:
       application_id:
@@ -251,6 +264,22 @@ definitions:
       version:
         type: integer
     type: object
+  httptransport.ListDefinitionCandidatesRequest:
+    properties:
+      application_id:
+        type: string
+      page:
+        type: integer
+      page_size:
+        type: integer
+      search:
+        type: string
+      tenant_id:
+        type: string
+    required:
+    - application_id
+    - tenant_id
+    type: object
   httptransport.ListDefinitionsRequest:
     properties:
       application_id:
@@ -352,6 +381,19 @@ definitions:
     properties:
       subject:
         type: string
+    type: object
+  httptransport.PageDTO-httptransport_DefinitionCandidateDTO:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/httptransport.DefinitionCandidateDTO'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
     type: object
   httptransport.PageDTO-httptransport_DefinitionDTO:
     properties:
@@ -1021,6 +1063,34 @@ paths:
       summary: Cancel a running workflow instance
       tags:
       - workflow-instances
+  /api/v1/workflow/instances/definitions/list:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Search and pagination
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httptransport.ListDefinitionCandidatesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httptransport.Response'
+            - properties:
+                body:
+                  $ref: '#/definitions/httptransport.PageDTO-httptransport_DefinitionCandidateDTO'
+              type: object
+      security:
+      - Bearer: []
+      summary: Search definitions referenced by visible workflow instances
+      tags:
+      - workflow-instances
   /api/v1/workflow/instances/get:
     post:
       consumes:
@@ -1163,6 +1233,34 @@ paths:
       security:
       - Bearer: []
       summary: Start a durable workflow instance
+      tags:
+      - workflow-instances
+  /api/v1/workflow/instances/start-definitions/list:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Search and pagination
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httptransport.ListDefinitionCandidatesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httptransport.Response'
+            - properties:
+                body:
+                  $ref: '#/definitions/httptransport.PageDTO-httptransport_DefinitionCandidateDTO'
+              type: object
+      security:
+      - Bearer: []
+      summary: Search published definitions available for starting an instance
       tags:
       - workflow-instances
   /api/v1/workflow/instances/task-history/list:

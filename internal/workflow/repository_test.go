@@ -78,6 +78,63 @@ func TestRepositoryCreateInstanceRollsBackWhenOutboxFails(t *testing.T) {
 	}
 }
 
+func TestRepositoryDefinitionCandidatesEnforceLifecycleBoundaries(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		countSQL  string
+		listSQL   string
+		list      func(*Repository, context.Context, DefinitionFilter) (Page[DefinitionCandidate], error)
+		candidate DefinitionCandidate
+	}{
+		{
+			name:     "start candidates are published definitions",
+			countSQL: `SELECT COUNT\(id\) FROM workflow_definitions WHERE tenant_id=\? AND application_id=\? AND status='published' AND \(LOWER\(name\) LIKE \? OR LOWER\(definition_key\) LIKE \?\)`,
+			listSQL:  `SELECT id,definition_key,name,status,published_revision FROM workflow_definitions .*status='published'.*ORDER BY name,id LIMIT \? OFFSET \?`,
+			list:     (*Repository).ListStartDefinitionCandidates,
+			candidate: DefinitionCandidate{ID: "definition-1", Key: "order.approval", Name: "Order approval", Status: DefinitionPublished,
+				PublishedRevision: 3},
+		},
+		{
+			name:     "history candidates are referenced by instances",
+			countSQL: `SELECT COUNT\(DISTINCT d.id\) FROM workflow_definitions d JOIN workflow_instances i ON i.definition_id=d.id AND i.tenant_id=d.tenant_id AND i.application_id=d.application_id`,
+			listSQL:  `SELECT DISTINCT d.id,d.definition_key,d.name,d.status,d.published_revision FROM workflow_definitions d JOIN workflow_instances i .* ORDER BY d.name,d.id LIMIT \? OFFSET \?`,
+			list:     (*Repository).ListInstanceDefinitionCandidates,
+			candidate: DefinitionCandidate{ID: "definition-2", Key: "legacy.order", Name: "Legacy order", Status: DefinitionDisabled,
+				PublishedRevision: 1},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			database, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = database.Close() })
+			repository := &Repository{db: sqlx.NewDb(database, "sqlmock")}
+			search := "%order%"
+			mock.ExpectQuery(test.countSQL).WithArgs("tenant-1", "app-1", search, search).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+			mock.ExpectQuery(test.listSQL).WithArgs("tenant-1", "app-1", search, search, 20, 0).WillReturnRows(
+				sqlmock.NewRows([]string{"id", "definition_key", "name", "status", "published_revision"}).
+					AddRow(test.candidate.ID, test.candidate.Key, test.candidate.Name, test.candidate.Status, test.candidate.PublishedRevision),
+			)
+			page, err := test.list(repository, t.Context(), DefinitionFilter{TenantID: "tenant-1", ApplicationID: "app-1", Search: "order", Page: 1, PageSize: 20})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if page.Total != 1 || len(page.Items) != 1 || page.Items[0] != test.candidate {
+				t.Fatalf("candidate page = %+v", page)
+			}
+			if err := mock.ExpectationsWereMet(); err != nil {
+				t.Fatalf("SQL expectations: %v", err)
+			}
+		})
+	}
+}
+
 func TestTaskWhereBuildsServerResolvedAssignmentFilter(t *testing.T) {
 	t.Parallel()
 

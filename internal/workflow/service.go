@@ -25,6 +25,8 @@ type Store interface {
 	GetDefinition(context.Context, string, string, string, uint32) (Definition, error)
 	GetPublishedDefinitionByKey(context.Context, string, string, string) (Definition, error)
 	ListDefinitions(context.Context, DefinitionFilter) (Page[Definition], error)
+	ListStartDefinitionCandidates(context.Context, DefinitionFilter) (Page[DefinitionCandidate], error)
+	ListInstanceDefinitionCandidates(context.Context, DefinitionFilter) (Page[DefinitionCandidate], error)
 	CreateInstance(context.Context, Instance, Definition) (Instance, error)
 	GetInstance(context.Context, string, string, string) (Instance, error)
 	CancelInstance(context.Context, string, string, string, int64, string, string) (Instance, error)
@@ -185,6 +187,35 @@ func (s *Service) ListDefinitions(ctx context.Context, filter DefinitionFilter) 
 	}
 	filter.Page, filter.PageSize = normalizePage(filter.Page, filter.PageSize)
 	return s.store.ListDefinitions(ctx, filter)
+}
+
+func (s *Service) ListStartDefinitionCandidates(ctx context.Context, filter DefinitionFilter) (Page[DefinitionCandidate], error) {
+	if err := s.validateDefinitionCandidateFilter(ctx, &filter); err != nil {
+		return Page[DefinitionCandidate]{}, err
+	}
+	return s.store.ListStartDefinitionCandidates(ctx, filter)
+}
+
+func (s *Service) ListInstanceDefinitionCandidates(ctx context.Context, filter DefinitionFilter) (Page[DefinitionCandidate], error) {
+	if err := s.validateDefinitionCandidateFilter(ctx, &filter); err != nil {
+		return Page[DefinitionCandidate]{}, err
+	}
+	return s.store.ListInstanceDefinitionCandidates(ctx, filter)
+}
+
+func (s *Service) validateDefinitionCandidateFilter(ctx context.Context, filter *DefinitionFilter) error {
+	if _, err := actorForTenant(ctx, filter.TenantID); err != nil {
+		return err
+	}
+	if filter.TenantID == "" || filter.ApplicationID == "" {
+		return invalid("tenant and application are required")
+	}
+	if err := s.verifyApplication(ctx, filter.TenantID, filter.ApplicationID); err != nil {
+		return err
+	}
+	filter.Search = strings.TrimSpace(filter.Search)
+	filter.Page, filter.PageSize = normalizePage(filter.Page, filter.PageSize)
+	return nil
 }
 
 type StartInstanceInput struct {

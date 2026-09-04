@@ -87,6 +87,25 @@ func TestServiceRejectsApplicationWithoutTenantGrant(t *testing.T) {
 	}
 }
 
+func TestServiceDefinitionCandidatesNormalizeScopeAndPagination(t *testing.T) {
+	t.Parallel()
+	assertFilter := func(_ context.Context, filter DefinitionFilter) (Page[DefinitionCandidate], error) {
+		if filter.TenantID != "tenant-1" || filter.ApplicationID != "app-1" || filter.Search != "orders" || filter.Page != 1 || filter.PageSize != 200 {
+			t.Fatalf("candidate filter = %+v", filter)
+		}
+		return Page[DefinitionCandidate]{}, nil
+	}
+	service := mustService(t, &fakeStore{listStartCandidates: assertFilter, listUsedCandidates: assertFilter}, &fakeAssignments{})
+	filter := DefinitionFilter{TenantID: "tenant-1", ApplicationID: "app-1", Search: "  orders  ", Page: -1, PageSize: 1000}
+	ctx := actorContext("user-1")
+	if _, err := service.ListStartDefinitionCandidates(ctx, filter); err != nil {
+		t.Fatalf("ListStartDefinitionCandidates() error = %v", err)
+	}
+	if _, err := service.ListInstanceDefinitionCandidates(ctx, filter); err != nil {
+		t.Fatalf("ListInstanceDefinitionCandidates() error = %v", err)
+	}
+}
+
 func TestServiceStartInstancePinsPublishedRevisionAndIdempotency(t *testing.T) {
 	t.Parallel()
 
@@ -248,6 +267,8 @@ type fakeStore struct {
 	task                Task
 	createDefinition    func(context.Context, Definition) (Definition, error)
 	createInstance      func(context.Context, Instance, Definition) (Instance, error)
+	listStartCandidates func(context.Context, DefinitionFilter) (Page[DefinitionCandidate], error)
+	listUsedCandidates  func(context.Context, DefinitionFilter) (Page[DefinitionCandidate], error)
 	listTasks           func(context.Context, TaskFilter) (Page[Task], error)
 	listTaskHistory     func(context.Context, TaskHistoryFilter) (Page[TaskHistory], error)
 	claimTask           func(context.Context, string, string, string, int64, string) (Task, error)
@@ -276,6 +297,18 @@ func (f *fakeStore) GetPublishedDefinitionByKey(context.Context, string, string,
 }
 func (f *fakeStore) ListDefinitions(context.Context, DefinitionFilter) (Page[Definition], error) {
 	return Page[Definition]{}, nil
+}
+func (f *fakeStore) ListStartDefinitionCandidates(ctx context.Context, filter DefinitionFilter) (Page[DefinitionCandidate], error) {
+	if f.listStartCandidates == nil {
+		return Page[DefinitionCandidate]{}, errors.New("unexpected ListStartDefinitionCandidates call")
+	}
+	return f.listStartCandidates(ctx, filter)
+}
+func (f *fakeStore) ListInstanceDefinitionCandidates(ctx context.Context, filter DefinitionFilter) (Page[DefinitionCandidate], error) {
+	if f.listUsedCandidates == nil {
+		return Page[DefinitionCandidate]{}, errors.New("unexpected ListInstanceDefinitionCandidates call")
+	}
+	return f.listUsedCandidates(ctx, filter)
 }
 func (f *fakeStore) CreateInstance(ctx context.Context, value Instance, definition Definition) (Instance, error) {
 	if f.createInstance != nil {

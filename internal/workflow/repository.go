@@ -188,6 +188,49 @@ func (r *Repository) ListDefinitions(ctx context.Context, filter DefinitionFilte
 	return Page[Definition]{Items: items, Total: total, Page: filter.Page, PageSize: filter.PageSize}, nil
 }
 
+func (r *Repository) ListStartDefinitionCandidates(ctx context.Context, filter DefinitionFilter) (Page[DefinitionCandidate], error) {
+	clauses := []string{"tenant_id=?", "application_id=?", "status='published'"}
+	args := []any{filter.TenantID, filter.ApplicationID}
+	if filter.Search != "" {
+		clauses = append(clauses, "(LOWER(name) LIKE ? OR LOWER(definition_key) LIKE ?)")
+		search := "%" + strings.ToLower(filter.Search) + "%"
+		args = append(args, search, search)
+	}
+	return r.listDefinitionCandidates(ctx, "workflow_definitions", "WHERE "+strings.Join(clauses, " AND "), args, filter, "")
+}
+
+func (r *Repository) ListInstanceDefinitionCandidates(ctx context.Context, filter DefinitionFilter) (Page[DefinitionCandidate], error) {
+	clauses := []string{"d.tenant_id=?", "d.application_id=?"}
+	args := []any{filter.TenantID, filter.ApplicationID}
+	if filter.Search != "" {
+		clauses = append(clauses, "(LOWER(d.name) LIKE ? OR LOWER(d.definition_key) LIKE ?)")
+		search := "%" + strings.ToLower(filter.Search) + "%"
+		args = append(args, search, search)
+	}
+	from := "workflow_definitions d JOIN workflow_instances i ON i.definition_id=d.id AND i.tenant_id=d.tenant_id AND i.application_id=d.application_id"
+	return r.listDefinitionCandidates(ctx, from, "WHERE "+strings.Join(clauses, " AND "), args, filter, "d.")
+}
+
+func (r *Repository) listDefinitionCandidates(ctx context.Context, from, where string, args []any, filter DefinitionFilter, prefix string) (Page[DefinitionCandidate], error) {
+	countColumn := prefix + "id"
+	distinct := ""
+	if prefix != "" {
+		countColumn = "DISTINCT " + countColumn
+		distinct = "DISTINCT "
+	}
+	var total int64
+	if err := r.db.GetContext(ctx, &total, r.db.Rebind(`SELECT COUNT(`+countColumn+`) FROM `+from+` `+where), args...); err != nil {
+		return Page[DefinitionCandidate]{}, fmt.Errorf("count workflow definition candidates: %w", err)
+	}
+	args = append(args, filter.PageSize, (filter.Page-1)*filter.PageSize)
+	query := r.db.Rebind(`SELECT ` + distinct + prefix + `id,` + prefix + `definition_key,` + prefix + `name,` + prefix + `status,` + prefix + `published_revision FROM ` + from + ` ` + where + ` ORDER BY ` + prefix + `name,` + prefix + `id LIMIT ? OFFSET ?`)
+	items := make([]DefinitionCandidate, 0)
+	if err := r.db.SelectContext(ctx, &items, query, args...); err != nil {
+		return Page[DefinitionCandidate]{}, fmt.Errorf("list workflow definition candidates: %w", err)
+	}
+	return Page[DefinitionCandidate]{Items: items, Total: total, Page: filter.Page, PageSize: filter.PageSize}, nil
+}
+
 func definitionWhere(filter DefinitionFilter) (string, []any) {
 	clauses := []string{"tenant_id=?"}
 	args := []any{filter.TenantID}

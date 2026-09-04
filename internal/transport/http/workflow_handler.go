@@ -1,6 +1,7 @@
 package httptransport
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -118,6 +119,13 @@ type PageDTO[T any] struct {
 	Page     int   `json:"page"`
 	PageSize int   `json:"page_size"`
 }
+type DefinitionCandidateDTO struct {
+	ID                string `json:"id"`
+	Key               string `json:"key"`
+	Name              string `json:"name"`
+	Status            string `json:"status"`
+	PublishedRevision uint32 `json:"published_revision"`
+}
 type CompleteTaskResponseBody struct {
 	Task     TaskDTO     `json:"task"`
 	Instance InstanceDTO `json:"instance"`
@@ -158,6 +166,13 @@ type ListDefinitionsRequest struct {
 	TenantID      string `json:"tenant_id" binding:"required"`
 	ApplicationID string `json:"application_id"`
 	Status        string `json:"status"`
+	Search        string `json:"search"`
+	Page          int    `json:"page"`
+	PageSize      int    `json:"page_size"`
+}
+type ListDefinitionCandidatesRequest struct {
+	TenantID      string `json:"tenant_id" binding:"required"`
+	ApplicationID string `json:"application_id" binding:"required"`
 	Search        string `json:"search"`
 	Page          int    `json:"page"`
 	PageSize      int    `json:"page_size"`
@@ -363,6 +378,45 @@ func (h *Handler) ListDefinitions(c *gin.Context) {
 		items = append(items, definitionDTO(item))
 	}
 	respond(c, h, PageDTO[DefinitionDTO]{Items: items, Total: value.Total, Page: value.Page, PageSize: value.PageSize}, err)
+}
+
+// ListStartDefinitionCandidates godoc
+// @Summary Search published definitions available for starting an instance
+// @Tags workflow-instances
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param request body ListDefinitionCandidatesRequest true "Search and pagination"
+// @Success 200 {object} Response{body=PageDTO[DefinitionCandidateDTO]}
+// @Router /api/v1/workflow/instances/start-definitions/list [post]
+func (h *Handler) ListStartDefinitionCandidates(c *gin.Context) {
+	h.listDefinitionCandidates(c, h.workflow.ListStartDefinitionCandidates)
+}
+
+// ListInstanceDefinitionCandidates godoc
+// @Summary Search definitions referenced by visible workflow instances
+// @Tags workflow-instances
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param request body ListDefinitionCandidatesRequest true "Search and pagination"
+// @Success 200 {object} Response{body=PageDTO[DefinitionCandidateDTO]}
+// @Router /api/v1/workflow/instances/definitions/list [post]
+func (h *Handler) ListInstanceDefinitionCandidates(c *gin.Context) {
+	h.listDefinitionCandidates(c, h.workflow.ListInstanceDefinitionCandidates)
+}
+
+func (h *Handler) listDefinitionCandidates(c *gin.Context, list func(context.Context, workflow.DefinitionFilter) (workflow.Page[workflow.DefinitionCandidate], error)) {
+	var request ListDefinitionCandidatesRequest
+	if !bind(c, h, &request) {
+		return
+	}
+	value, err := list(c.Request.Context(), workflow.DefinitionFilter{TenantID: request.TenantID, ApplicationID: request.ApplicationID, Search: request.Search, Page: request.Page, PageSize: request.PageSize})
+	items := make([]DefinitionCandidateDTO, 0, len(value.Items))
+	for _, item := range value.Items {
+		items = append(items, DefinitionCandidateDTO{ID: item.ID, Key: item.Key, Name: item.Name, Status: item.Status, PublishedRevision: item.PublishedRevision})
+	}
+	respond(c, h, PageDTO[DefinitionCandidateDTO]{Items: items, Total: value.Total, Page: value.Page, PageSize: value.PageSize}, err)
 }
 
 // StartInstance godoc
